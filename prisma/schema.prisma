@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model hospitals {
+  id            String          @id @default(cuid())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  name          String
+  adddress      String
+  phoneNumber   String
+  email         String
+  roles         roles[]
+  roleFeatures  roleFeatures[]
+  users         users[]
+  patients      patients[]
+  appointements appointements[]
+}
+
+model roles {
+  id           String         @id @default(cuid())
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  name         String
+  hospitalId   String
+  hospital     hospitals      @relation(fields: [hospitalId], references: [id])
+  users        users[]
+  roleFeatures roleFeatures[]
+}
+
+model features {
+  id           String         @id @default(cuid())
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  name         String
+  roleFeatures roleFeatures[]
+}
+
+model roleFeatures {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  isReadLimited Boolean   @default(false)
+  canCreate     Boolean   @default(false)
+  canRead       Boolean   @default(false)
+  canDelete     Boolean   @default(false)
+  role          roles     @relation(fields: [roleId], references: [id])
+  roleId        String
+  feature       features  @relation(fields: [featureId], references: [id])
+  featureId     String
+  hospitalId    String
+  hospital      hospitals @relation(fields: [hospitalId], references: [id])
+}
+
+model users {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isAdmin    Boolean   @default(false)
+  name       String
+  email      String    @unique
+  password   String
+  role       roles     @relation(fields: [roleId], references: [id])
+  roleId     String
+  hospitalId String
+  hospital   hospitals @relation(fields: [hospitalId], references: [id])
+}
+
+model patients {
+  id                     String    @id @default(cuid())
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  name                   String
+  email                  String    @unique
+  password               String
+  isEmailVerified        Boolean   @default(false)
+  isMobileNumberVerified Boolean   @default(false)
+  dateOfBirth            DateTime
+  gender                 String
+  hospitalId             String
+  hospital               hospitals @relation(fields: [hospitalId], references: [id])
+}
+
+model appointements {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  doctorId   String
+  patientId  String
+  hospitalId String
+  hospital   hospitals @relation(fields: [hospitalId], references: [id])
+}
