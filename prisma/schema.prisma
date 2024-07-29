@@ -7,91 +7,172 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum DayOfWeek {
+  Monday
+  Tuesday
+  Wednesday
+  Thursday
+  Friday
+  Saturday
+  Sunday
+}
+
+enum roles {
+  ADMIN
+  DOCTOR
+}
+
+enum appointmentStatuses {
+  SCHEDULED
+  PENDING
+  COMPLETED
+  CANCELED
+}
+
 model hospitals {
-  id            String          @id @default(cuid())
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  name          String
-  adddress      String
-  phoneNumber   String
-  email         String
-  roles         roles[]
-  roleFeatures  roleFeatures[]
-  users         users[]
-  patients      patients[]
-  appointements appointements[]
-}
-
-model roles {
   id           String         @id @default(cuid())
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   name         String
-  hospitalId   String
-  hospital     hospitals      @relation(fields: [hospitalId], references: [id])
+  isd_code     String?
+  address      String
+  phoneNumber  String
+  email        String
+  // roles         roles[]
+  // roleFeatures  roleFeatures[]
   users        users[]
-  roleFeatures roleFeatures[]
+  // patients      patients[]
+  appointments appointments[]
+  slots        slots[]
 }
 
-model features {
-  id           String         @id @default(cuid())
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  name         String
-  roleFeatures roleFeatures[]
-}
+// model roles {
+//   id           String         @id @default(cuid())
+//   createdAt    DateTime       @default(now())
+//   updatedAt    DateTime       @updatedAt
+//   name         String
+//   hospitalId   String
+//   hospital     hospitals      @relation(fields: [hospitalId], references: [id])
+//   // users        users[]
+//   roleFeatures roleFeatures[]
+// }
 
-model roleFeatures {
-  id            String    @id @default(cuid())
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  isReadLimited Boolean   @default(false)
-  canCreate     Boolean   @default(false)
-  canRead       Boolean   @default(false)
-  canDelete     Boolean   @default(false)
-  role          roles     @relation(fields: [roleId], references: [id])
-  roleId        String
-  feature       features  @relation(fields: [featureId], references: [id])
-  featureId     String
-  hospitalId    String
-  hospital      hospitals @relation(fields: [hospitalId], references: [id])
-}
+// model features {
+//   id           String         @id @default(cuid())
+//   createdAt    DateTime       @default(now())
+//   updatedAt    DateTime       @updatedAt
+//   name         String
+//   roleFeatures roleFeatures[]
+// }
+
+// model roleFeatures {
+//   id            String    @id @default(cuid())
+//   createdAt     DateTime  @default(now())
+//   updatedAt     DateTime  @updatedAt
+//   isReadLimited Boolean   @default(false)
+//   canCreate     Boolean   @default(false)
+//   canRead       Boolean   @default(false)
+//   canDelete     Boolean   @default(false)
+//   role          roles     @relation(fields: [roleId], references: [id])
+//   roleId        String
+//   feature       features  @relation(fields: [featureId], references: [id])
+//   featureId     String
+//   hospitalId    String
+//   hospital      hospitals @relation(fields: [hospitalId], references: [id])
+// }
 
 model users {
-  id         String    @id @default(cuid())
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  isAdmin    Boolean   @default(false)
-  name       String
-  email      String    @unique
-  password   String
-  role       roles     @relation(fields: [roleId], references: [id])
-  roleId     String
-  hospitalId String
-  hospital   hospitals @relation(fields: [hospitalId], references: [id])
+  id                String         @id @default(cuid())
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  isAdmin           Boolean        @default(false)
+  name              String
+  email             String         @unique
+  password          String
+  profilePictureUrl String?
+  speciality        String?
+  address           String?
+  phoneNumber       String
+  isd_code          String
+  role              roles
+  isActive          Boolean        @default(true)
+  isDeleted         Boolean        @default(false)
+  // roleId            String
+  hospitalId        String
+  hospital          hospitals      @relation(fields: [hospitalId], references: [id])
+  appointments      appointments[]
+  doctorSlots       doctorSlots[]
+}
+
+model slots {
+  id          String        @id @default(cuid())
+  startTime   String
+  endTime     String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  hospitalId  String
+  hospital    hospitals     @relation(fields: [hospitalId], references: [id])
+  doctorSlots doctorSlots[]
+}
+
+model weekdays {
+  id          String        @id @default(cuid())
+  name        DayOfWeek
+  doctorSlots doctorSlots[]
+}
+
+model doctorSlots {
+  id           String         @id @default(cuid())
+  doctorId     String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  slotId       String
+  weekDaysId   String
+  slotLimit    Int            @default(0)
+  isEnabled    Boolean        @default(true)
+  isActive     Boolean        @default(true)
+  isDeleted    Boolean        @default(false)
+  doctor       users          @relation(fields: [doctorId], references: [id])
+  slot         slots          @relation(fields: [slotId], references: [id])
+  dayOfWeek    weekdays       @relation(fields: [weekDaysId], references: [id])
+  appointments appointments[]
 }
 
 model patients {
-  id                     String    @id @default(cuid())
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-  name                   String
-  email                  String    @unique
+  id                     String         @id @default(cuid())
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  name                   String?
+  email                  String         @unique
   password               String
-  isEmailVerified        Boolean   @default(false)
-  isMobileNumberVerified Boolean   @default(false)
-  dateOfBirth            DateTime
-  gender                 String
-  hospitalId             String
-  hospital               hospitals @relation(fields: [hospitalId], references: [id])
+  isEmailVerified        Boolean        @default(false)
+  isMobileNumberVerified Boolean        @default(false)
+  phoneNumber            String         @unique
+  isd_code               String
+  dateOfBirth            DateTime?
+  gender                 String?
+  profilePictureUrl      String?
+  appointments           appointments[]
+  // hospitalId             String
+  // hospital               hospitals @relation(fields: [hospitalId], references: [id])
+  // @@unique([email], name: "patientEmailUniqueIdentifierr")
 }
 
-model appointements {
-  id         String    @id @default(cuid())
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  doctorId   String
-  patientId  String
-  hospitalId String
-  hospital   hospitals @relation(fields: [hospitalId], references: [id])
+model appointments {
+  id                String              @id @default(cuid())
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  doctorSlotId      String
+  doctorId          String
+  patientId         String
+  hospitalId        String
+  remarks           String?
+  doctorRemarks     String?
+  decease           String?
+  appointmentStatus appointmentStatuses
+  appointmentDate   DateTime
+  hospital          hospitals           @relation(fields: [hospitalId], references: [id])
+  patient           patients            @relation(fields: [patientId], references: [id])
+  doctor            users               @relation(fields: [doctorId], references: [id])
+  doctorSlots       doctorSlots         @relation(fields: [doctorSlotId], references: [id])
 }
