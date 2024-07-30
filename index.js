@@ -8,7 +8,6 @@ process.env.PWD = process.cwd();
 
 const app = express();
 
-// enable cors
 app.use(cors());
 app.options("*", cors());
 
