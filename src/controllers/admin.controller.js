@@ -194,3 +194,105 @@ exports.createDoctorsSlot = async (req, res) => {
     });
   }
 };
+
+exports.updateAppointmentStatus = async (req, res) => {
+  try {
+    let appointmentId = req.body.appointmentId;
+    let prescriptions = req.body.prescriptions;
+    let doctorRemarks = req.body.doctorRemarks;
+    let status = req.body.status;
+
+    function addDays(date, days) {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return result;
+    }
+
+    let appointUpdateResult = await prisma.appointments.update({
+      where: {
+        id: appointmentId,
+      },
+      data: {
+        appointmentStatus: status,
+        doctorRemarks: doctorRemarks,
+      },
+    });
+
+    if (prescriptions.length > 0) {
+      await Promise.all(
+        prescriptions.map((prescription) => {
+          return new Promise(async (res, rej) => {
+            try {
+              let startDate = new Date();
+              let endDate = addDays(startDate, prescription.durationInDays);
+              let prescriptionDetails = await prisma.patientPrescription.create(
+                {
+                  data: {
+                    medicationnName: prescription.medicationName,
+                    medicationDosage: prescription.medicationDosage,
+                    durationInDays: prescription.durationInDays,
+                    foodRelation: prescription.foodRelation,
+                    appointmentId: appointmentId,
+                    patientId: appointUpdateResult.patientId,
+                    hospitalId: appointUpdateResult.hospitalId,
+                  },
+                },
+              );
+              let promiseArr = [];
+              for (
+                let date = startDate;
+                date < endDate;
+                date = addDays(date, 1)
+              ) {
+                promiseArr.push(
+                  new Promise(async (res, rej) => {
+                    try {
+                      let prescriptionDayTimeData = [];
+                      let prescriptionDayData =
+                        await prisma.prescriptionDays.create({
+                          data: {
+                            prescriptionId: prescriptionDetails.id,
+                            prescriptionDate: date,
+                          },
+                        });
+                      for (const timeOfDay of prescription.timeOfDay) {
+                        prescriptionDayTimeData.push({
+                          timeOfDay,
+                          prescriptionDayId: prescriptionDayData.id,
+                        });
+                      }
+                      await prisma.prescriptionTimeOfDay.createMany({
+                        data: prescriptionDayTimeData,
+                      });
+                      res("success");
+                    } catch (err) {
+                      console.log("err", err);
+                      rej(err);
+                    }
+                  }),
+                );
+              }
+              await Promise.allSettled(promiseArr);
+              res("success");
+            } catch (err) {
+              console.log("errrrr", err);
+              rej(err);
+            }
+          });
+        }),
+      );
+    }
+    res.status(httpStatus.OK).send({
+      message: "Appointment status updated successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error updating appointment status",
+      success: true,
+      err: err,
+    });
+  }
+};

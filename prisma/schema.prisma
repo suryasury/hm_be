@@ -27,23 +27,31 @@ enum appointmentStatuses {
   PENDING
   COMPLETED
   CANCELED
+  APPROVED
+}
+
+enum foodRelationEnum {
+  BEFORE_MEAL
+  AFTER_MEAL
+  WITH_MEAL
 }
 
 model hospitals {
-  id           String         @id @default(cuid())
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  name         String
-  isd_code     String?
-  address      String
-  phoneNumber  String
-  email        String
+  id                  String                @id @default(cuid())
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  name                String
+  isd_code            String?
+  address             String
+  phoneNumber         String
+  email               String
   // roles         roles[]
   // roleFeatures  roleFeatures[]
-  users        users[]
+  users               users[]
   // patients      patients[]
-  appointments appointments[]
-  slots        slots[]
+  appointments        appointments[]
+  slots               slots[]
+  patientPrescription patientPrescription[]
 }
 
 // model roles {
@@ -139,40 +147,88 @@ model doctorSlots {
 }
 
 model patients {
-  id                     String         @id @default(cuid())
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
+  id                     String                @id @default(cuid())
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
   name                   String?
-  email                  String         @unique
+  email                  String                @unique
   password               String
-  isEmailVerified        Boolean        @default(false)
-  isMobileNumberVerified Boolean        @default(false)
-  phoneNumber            String         @unique
+  isEmailVerified        Boolean               @default(false)
+  isMobileNumberVerified Boolean               @default(false)
+  phoneNumber            String                @unique
   isd_code               String
   dateOfBirth            DateTime?
   gender                 String?
   profilePictureUrl      String?
+  bloodGroup             String?
+  houseNumber            String?
+  address1               String?
+  address2               String?
+  city                   String?
+  state                  String?
+  pincode                String?
+  country                String?
   appointments           appointments[]
+  patientPrescription    patientPrescription[]
   // hospitalId             String
   // hospital               hospitals @relation(fields: [hospitalId], references: [id])
   // @@unique([email], name: "patientEmailUniqueIdentifierr")
 }
 
 model appointments {
-  id                String              @id @default(cuid())
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  doctorSlotId      String
-  doctorId          String
-  patientId         String
-  hospitalId        String
-  remarks           String?
-  doctorRemarks     String?
-  decease           String?
-  appointmentStatus appointmentStatuses
-  appointmentDate   DateTime
-  hospital          hospitals           @relation(fields: [hospitalId], references: [id])
-  patient           patients            @relation(fields: [patientId], references: [id])
-  doctor            users               @relation(fields: [doctorId], references: [id])
-  doctorSlots       doctorSlots         @relation(fields: [doctorSlotId], references: [id])
+  id                  String                @id @default(cuid())
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  doctorSlotId        String
+  doctorId            String
+  patientId           String
+  hospitalId          String
+  remarks             String?
+  doctorRemarks       String?
+  decease             String?
+  appointmentStatus   appointmentStatuses
+  appointmentDate     DateTime
+  hospital            hospitals             @relation(fields: [hospitalId], references: [id])
+  patient             patients              @relation(fields: [patientId], references: [id])
+  doctor              users                 @relation(fields: [doctorId], references: [id])
+  doctorSlots         doctorSlots           @relation(fields: [doctorSlotId], references: [id])
+  patientPrescription patientPrescription[]
+}
+
+model patientPrescription {
+  id               String             @id @default(cuid())
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  appointmentId    String
+  appointment      appointments       @relation(fields: [appointmentId], references: [id])
+  patientId        String
+  patient          patients           @relation(fields: [patientId], references: [id])
+  hospitalId       String
+  hospital         hospitals          @relation(fields: [hospitalId], references: [id])
+  medicationnName  String
+  medicationDosage String
+  durationInDays   Int
+  foodRelation     foodRelationEnum
+  prescriptionDays prescriptionDays[]
+}
+
+model prescriptionDays {
+  id                           String                  @id @default(cuid())
+  createdAt                    DateTime                @default(now())
+  updatedAt                    DateTime                @updatedAt
+  prescriptionId               String
+  prescriptionDate             DateTime
+  isPrescriptionTakenForTheDay Boolean                 @default(false)
+  prescriptionTimeOfDay        prescriptionTimeOfDay[]
+  patientPrescription          patientPrescription     @relation(fields: [prescriptionId], references: [id])
+}
+
+model prescriptionTimeOfDay {
+  id                  String           @id @default(cuid())
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  timeOfDay           String
+  isPrescriptionTaken Boolean          @default(false)
+  prescriptionDays    prescriptionDays @relation(fields: [prescriptionDayId], references: [id])
+  prescriptionDayId   String
 }
