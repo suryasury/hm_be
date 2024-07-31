@@ -40,7 +40,7 @@ exports.signUp = async (req, res) => {
     res.cookie("sessionToken", jwtToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      sameSite: "lax",
     });
     res.status(httpStatus.OK).send({
       message: "User created successfully",
@@ -88,7 +88,7 @@ exports.login = async (req, res) => {
         res.cookie("sessionToken", jwtToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: "none",
+          sameSite: "lax",
         });
         return res.status(httpStatus.OK).send({
           message: "User Logged in successfully",
