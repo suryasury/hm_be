@@ -11,13 +11,41 @@ exports.signUp = async (req, res) => {
     let userDetails = req.body;
     const hashedPassword = hashPassword(userDetails.password);
     userDetails.password = hashedPassword;
+    let isUserExist = await prisma.patients.findFirst({
+      where: {
+        OR: [
+          {
+            phoneNumber: userDetails.phoneNumber,
+          },
+          {
+            email: userDetails.email,
+          },
+        ],
+      },
+    });
+    if (isUserExist) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "User already exist with given mobile number or email",
+        success: false,
+        data: {},
+      });
+    }
     let result = await prisma.patients.create({
       data: userDetails,
+    });
+    const jwtToken = generateAccesToken({
+      userId: result.id,
+    });
+    res.cookie("sessionToken", jwtToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
     });
     res.status(httpStatus.OK).send({
       message: "User created successfully",
       success: true,
-      data: result,
+      data: {
+        userDetails: result,
+      },
     });
   } catch (err) {
     console.log("err", err);
@@ -54,12 +82,14 @@ exports.login = async (req, res) => {
         const jwtToken = generateAccesToken({
           userId: userDetails.id,
         });
+        res.cookie("sessionToken", jwtToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+        });
         return res.status(httpStatus.OK).send({
           message: "User Logged in successfully",
           success: true,
-          data: {
-            accessToken: jwtToken,
-          },
+          data: {},
         });
       } else {
         return res.status(httpStatus.UNAUTHORIZED).send({
