@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 
 exports.signUp = async (req, res) => {
   try {
+    console.log("signup controller");
     let userDetails = req.body;
     const hashedPassword = hashPassword(userDetails.password);
     userDetails.password = hashedPassword;
@@ -39,7 +40,6 @@ exports.signUp = async (req, res) => {
     res.cookie("sessionToken", jwtToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      domain: "localhost",
     });
     res.status(httpStatus.OK).send({
       message: "User created successfully",
@@ -60,6 +60,7 @@ exports.signUp = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
+    console.log("login controller");
     let loginDetails = req.body;
     let whereClause = {};
     if (loginDetails.userNameType === "EMAIL") {
@@ -86,7 +87,6 @@ exports.login = async (req, res) => {
         res.cookie("sessionToken", jwtToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          domain: "localhost",
         });
         return res.status(httpStatus.OK).send({
           message: "User Logged in successfully",
