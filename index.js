@@ -9,8 +9,7 @@ process.env.PWD = process.cwd();
 
 const app = express();
 
-app.use(cors());
-app.options("*", cors({ credentials: true }));
+app.use(cors({ credentials: true, origin: "*" }));
 app.use(cookieParser());
 
 app.use(express.urlencoded({ extended: true }));
