@@ -205,7 +205,7 @@ model patientPrescription {
   patient          patients           @relation(fields: [patientId], references: [id])
   hospitalId       String
   hospital         hospitals          @relation(fields: [hospitalId], references: [id])
-  medicationnName  String
+  medicationName   String
   medicationDosage String
   durationInDays   Int
   foodRelation     foodRelationEnum

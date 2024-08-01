@@ -37,4 +37,9 @@ router.get(
   verifyAccessToken,
   userController.getAppointmentDetails,
 );
+router.get(
+  "/prescription/daywise/details",
+  verifyAccessToken,
+  userController.getPrescriptionDetails,
+);
 module.exports = router;

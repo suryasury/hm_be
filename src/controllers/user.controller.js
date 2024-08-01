@@ -364,3 +364,74 @@ exports.getAppointmentDetails = async (req, res) => {
     });
   }
 };
+
+exports.getPrescriptionDetails = async (req, res) => {
+  try {
+    let date = req.query.date;
+    let { userId } = req.user;
+    let prescriptionList = await prisma.patientPrescription.findMany({
+      where: {
+        patientId: userId,
+      },
+      include: {
+        prescriptionDays: {
+          where: {
+            prescriptionDate: new Date(date),
+          },
+          include: {
+            prescriptionTimeOfDay: true,
+          },
+        },
+      },
+    });
+    let morningPrescription = [];
+    let afterNoonPrescription = [];
+    let eveningPrescription = [];
+    let nightPrescription = [];
+    prescriptionList.forEach((prescription) => {
+      prescription.prescriptionDays.forEach((pDays) => {
+        pDays.prescriptionTimeOfDay.forEach((pTimeOfDay) => {
+          let prescriptionResult = {
+            prescriptionId: prescription.id,
+            appointmentId: prescription.appointmentId,
+            hospitalId: prescription.hospitalId,
+            patientId: prescription.patientId,
+            medicationName: prescription.medicationName,
+            medicationDosage: prescription.medicationDosage,
+            foodRelation: prescription.foodRelation,
+            prescriptionDate: pDays.prescriptionDate,
+            isPrescriptionTakenForTheDay: pDays.isPrescriptionTakenForTheDay,
+            prescriptionTimeOfDay: pTimeOfDay.timeOfDay,
+            isPrescriptionTaken: pTimeOfDay.isPrescriptionTaken,
+          };
+          if (pTimeOfDay.timeOfDay === "MORNING") {
+            morningPrescription.push(prescriptionResult);
+          } else if (pTimeOfDay.timeOfDay === "AFTERNOON") {
+            afterNoonPrescription.push(prescriptionResult);
+          } else if (pTimeOfDay.timeOfDay === "EVENING") {
+            eveningPrescription.push(prescriptionResult);
+          } else if (pTimeOfDay.timeOfDay === "NIGHT") {
+            nightPrescription.push(prescriptionResult);
+          }
+        });
+      });
+    });
+    res.status(httpStatus.OK).send({
+      message: "Prescription details fetched successfully",
+      success: true,
+      data: {
+        morningPrescription,
+        afterNoonPrescription,
+        eveningPrescription,
+        nightPrescription,
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching Prescription details",
+      success: false,
+      err: err,
+    });
+  }
+};

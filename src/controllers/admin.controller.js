@@ -228,7 +228,7 @@ exports.updateAppointmentStatus = async (req, res) => {
               let prescriptionDetails = await prisma.patientPrescription.create(
                 {
                   data: {
-                    medicationnName: prescription.medicationName,
+                    medicationName: prescription.medicationName,
                     medicationDosage: prescription.medicationDosage,
                     durationInDays: prescription.durationInDays,
                     foodRelation: prescription.foodRelation,
@@ -252,7 +252,9 @@ exports.updateAppointmentStatus = async (req, res) => {
                         await prisma.prescriptionDays.create({
                           data: {
                             prescriptionId: prescriptionDetails.id,
-                            prescriptionDate: date,
+                            prescriptionDate: new Date(
+                              date.setHours(0, 0, 0, 0),
+                            ),
                           },
                         });
                       for (const timeOfDay of prescription.timeOfDay) {
