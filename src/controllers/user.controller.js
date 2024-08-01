@@ -388,9 +388,11 @@ exports.getPrescriptionDetails = async (req, res) => {
     let afterNoonPrescription = [];
     let eveningPrescription = [];
     let nightPrescription = [];
+    let isPriscriptionAvailableForTheDay = false;
     prescriptionList.forEach((prescription) => {
       prescription.prescriptionDays.forEach((pDays) => {
         pDays.prescriptionTimeOfDay.forEach((pTimeOfDay) => {
+          isPriscriptionAvailableForTheDay = true;
           let prescriptionResult = {
             prescriptionId: prescription.id,
             appointmentId: prescription.appointmentId,
@@ -400,6 +402,8 @@ exports.getPrescriptionDetails = async (req, res) => {
             medicationDosage: prescription.medicationDosage,
             foodRelation: prescription.foodRelation,
             prescriptionDate: pDays.prescriptionDate,
+            prescriptionDayId: pDays.id,
+            prescriptionTimeOfDayId: pTimeOfDay.id,
             isPrescriptionTakenForTheDay: pDays.isPrescriptionTakenForTheDay,
             prescriptionTimeOfDay: pTimeOfDay.timeOfDay,
             isPrescriptionTaken: pTimeOfDay.isPrescriptionTaken,
@@ -420,6 +424,7 @@ exports.getPrescriptionDetails = async (req, res) => {
       message: "Prescription details fetched successfully",
       success: true,
       data: {
+        isPriscriptionAvailableForTheDay,
         morningPrescription,
         afterNoonPrescription,
         eveningPrescription,
@@ -430,6 +435,53 @@ exports.getPrescriptionDetails = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error fetching Prescription details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updatePatientPrescriptionStatus = async (req, res) => {
+  try {
+    let { prescriptionTimeOfDayId, prescriptionDayId } = req.body;
+    await prisma.prescriptionTimeOfDay.update({
+      where: {
+        id: prescriptionTimeOfDayId,
+      },
+      data: {
+        isPrescriptionTaken: req.body.isPrescriptionTaken,
+      },
+    });
+    let allPdetails = await prisma.prescriptionTimeOfDay.findMany({
+      where: {
+        prescriptionDayId: prescriptionDayId,
+      },
+    });
+    let isTakenForTheDay = true;
+    allPdetails.forEach((pTimeOFDaysDetails) => {
+      if (!pTimeOFDaysDetails.isPrescriptionTaken) {
+        isTakenForTheDay = false;
+      }
+    });
+    if (isTakenForTheDay) {
+      await prisma.prescriptionDays.update({
+        where: {
+          id: prescriptionDayId,
+        },
+        data: {
+          isPrescriptionTakenForTheDay: true,
+        },
+      });
+    }
+    res.status(httpStatus.OK).send({
+      message: "Medication status updated",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error updating medication status",
       success: false,
       err: err,
     });

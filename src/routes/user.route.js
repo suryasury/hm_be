@@ -42,4 +42,9 @@ router.get(
   verifyAccessToken,
   userController.getPrescriptionDetails,
 );
+router.patch(
+  "/prescription/medication/status/update",
+  verifyAccessToken,
+  userController.updatePatientPrescriptionStatus,
+);
 module.exports = router;
