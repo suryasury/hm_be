@@ -1,0 +1,26 @@
+const express = require("express");
+const router = express.Router();
+const verifyUserAccessToken = require("../middlewares/verifyAccessToken");
+const commonController = require("../controllers").commonController;
+const multer = require("multer");
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const mimeType = allowedTypes.test(file.mimetype);
+    if (mimeType) {
+      return cb(null, true);
+    } else {
+      cb(new Error("Only Image and PDF files are allowed."));
+    }
+  },
+});
+
+router.post(
+  "/customer/upload/records",
+  verifyUserAccessToken,
+  upload.array("files"),
+  commonController.uploadCustomerMedicalRecords,
+);
+
+module.exports = router;

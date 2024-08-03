@@ -147,15 +147,15 @@ model doctorSlots {
 }
 
 model patients {
-  id                     String                @id @default(cuid())
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  id                     String                   @id @default(cuid())
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
   name                   String?
-  email                  String                @unique
+  email                  String                   @unique
   password               String
-  isEmailVerified        Boolean               @default(false)
-  isMobileNumberVerified Boolean               @default(false)
-  phoneNumber            String                @unique
+  isEmailVerified        Boolean                  @default(false)
+  isMobileNumberVerified Boolean                  @default(false)
+  phoneNumber            String                   @unique
   isd_code               String
   dateOfBirth            DateTime?
   gender                 String?
@@ -170,29 +170,31 @@ model patients {
   country                String?
   appointments           appointments[]
   patientPrescription    patientPrescription[]
+  patientAppointmentDocs patientAppointmentDocs[]
   // hospitalId             String
   // hospital               hospitals @relation(fields: [hospitalId], references: [id])
   // @@unique([email], name: "patientEmailUniqueIdentifierr")
 }
 
 model appointments {
-  id                  String                @id @default(cuid())
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  doctorSlotId        String
-  doctorId            String
-  patientId           String
-  hospitalId          String
-  remarks             String?
-  doctorRemarks       String?
-  decease             String?
-  appointmentStatus   appointmentStatuses
-  appointmentDate     DateTime
-  hospital            hospitals             @relation(fields: [hospitalId], references: [id])
-  patient             patients              @relation(fields: [patientId], references: [id])
-  doctor              users                 @relation(fields: [doctorId], references: [id])
-  doctorSlots         doctorSlots           @relation(fields: [doctorSlotId], references: [id])
-  patientPrescription patientPrescription[]
+  id                     String                   @id @default(cuid())
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  doctorSlotId           String
+  doctorId               String
+  patientId              String
+  hospitalId             String
+  remarks                String?
+  doctorRemarks          String?
+  decease                String?
+  appointmentStatus      appointmentStatuses
+  appointmentDate        DateTime
+  hospital               hospitals                @relation(fields: [hospitalId], references: [id])
+  patient                patients                 @relation(fields: [patientId], references: [id])
+  doctor                 users                    @relation(fields: [doctorId], references: [id])
+  doctorSlots            doctorSlots              @relation(fields: [doctorSlotId], references: [id])
+  patientPrescription    patientPrescription[]
+  patientAppointmentDocs patientAppointmentDocs[]
 }
 
 model patientPrescription {
@@ -231,4 +233,20 @@ model prescriptionTimeOfDay {
   isPrescriptionTaken Boolean          @default(false)
   prescriptionDays    prescriptionDays @relation(fields: [prescriptionDayId], references: [id])
   prescriptionDayId   String
+}
+
+model patientAppointmentDocs {
+  id            String       @id @default(cuid())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  documentName  String
+  bucketPath    String
+  fileName      String
+  fileExtension String
+  contentType   String
+  patientId     String
+  appointmentId String
+  isDeleted     Boolean      @default(false)
+  patient       patients     @relation(fields: [patientId], references: [id])
+  appointment   appointments @relation(fields: [appointmentId], references: [id])
 }

@@ -13,6 +13,9 @@ module.exports = {
         PASSWORD_ENCRYPT_KEY:
           "3d09c8b30cf4983ab8d2128e93267fe5a9943fd98feb02c09390fa504ec77c29",
         PASSWORD_SALT_ROUNDS: 10,
+        FILE_UPLOADER_SKEY: "pKgIx7U+X/saTyHu8zWUIFHFcuLl0jvW7JPzvgUN",
+        FILE_UPLOADER_AKEY: "AKIAZAN7IW3SERD6IOQO",
+        BUCKET_NAME_S3: "dev-hms-01a7-assets.tech42.in",
       },
       env_uat: {
         NODE_ENV: "uat",
@@ -24,6 +27,9 @@ module.exports = {
         PASSWORD_ENCRYPT_KEY:
           "3d09c8b30cf4983ab8d2128e93267fe5a9943fd98feb02c09390fa504ec77c29",
         PASSWORD_SALT_ROUNDS: 10,
+        FILE_UPLOADER_SKEY: "pKgIx7U+X/saTyHu8zWUIFHFcuLl0jvW7JPzvgUN",
+        FILE_UPLOADER_AKEY: "AKIAZAN7IW3SERD6IOQO",
+        BUCKET_NAME_S3: "dev-hms-01a7-assets.tech42.in",
       },
     },
   ],

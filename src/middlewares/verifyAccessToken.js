@@ -41,6 +41,7 @@ module.exports = async (req, res, next) => {
           );
         }
       } else {
+        res.clearCookie("sessionToken");
         return error(
           {
             statusCode: httpStatus.UNAUTHORIZED,
@@ -51,6 +52,7 @@ module.exports = async (req, res, next) => {
         );
       }
     } else {
+      res.clearCookie("sessionToken");
       return error(
         {
           statusCode: httpStatus.UNAUTHORIZED,

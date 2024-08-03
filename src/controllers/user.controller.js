@@ -4,6 +4,7 @@ const hashPassword = require("../helpers/hashPassword");
 const validatePassword = require("../helpers/validatePassword");
 const generateAccesToken = require("../helpers/generateAccessToken");
 const determineTimePeriod = require("../helpers/timePeriod");
+const { getPreSignedUrl } = require("./common.controller");
 const prisma = new PrismaClient();
 
 exports.signUp = async (req, res) => {
@@ -231,6 +232,8 @@ exports.doctorSlotDetails = async (req, res) => {
 exports.createAppointment = async (req, res) => {
   try {
     let appointmentDetails = req.body;
+    let documents = appointmentDetails.documents || [];
+    delete appointmentDetails.documents;
     let { id } = req.user;
     let newAppointment = await prisma.appointments.create({
       data: {
@@ -239,6 +242,22 @@ exports.createAppointment = async (req, res) => {
         ...appointmentDetails,
       },
     });
+    if (documents.length > 0) {
+      const documentsData = documents.map((document) => {
+        return {
+          fileName: document.fileName,
+          bucketPath: document.bucketPath,
+          documentName: document.fileName,
+          fileExtension: document.fileExtension,
+          contentType: document.contentType,
+          patientId: id,
+          appointmentId: newAppointment.id,
+        };
+      });
+      await prisma.patientAppointmentDocs.createMany({
+        data: documentsData,
+      });
+    }
     res.status(httpStatus.OK).send({
       message: "Appointment booked successfully",
       success: true,
@@ -337,7 +356,7 @@ exports.getAppointmentHistoryList = async (req, res) => {
 exports.getAppointmentDetails = async (req, res) => {
   try {
     let { appointmentId } = req.params;
-    let appointmentList = await prisma.appointments.findUnique({
+    let appointmentDetails = await prisma.appointments.findUnique({
       where: {
         id: appointmentId,
       },
@@ -348,12 +367,36 @@ exports.getAppointmentDetails = async (req, res) => {
             slot: true,
           },
         },
+        patientAppointmentDocs: true,
+        patientPrescription: {
+          include: {
+            prescriptionDays: {
+              include: {
+                prescriptionTimeOfDay: true,
+              },
+            },
+          },
+        },
       },
     });
+    if (appointmentDetails.patientAppointmentDocs.length > 0) {
+      let signedUrlPromise = appointmentDetails.patientAppointmentDocs.map(
+        async (patientDocs) => {
+          const signedUrl = await getPreSignedUrl(patientDocs.bucketPath);
+          return {
+            ...patientDocs,
+            signedUrl,
+          };
+        },
+      );
+      appointmentDetails.patientAppointmentDocs = await Promise.all(
+        signedUrlPromise,
+      );
+    }
     res.status(httpStatus.OK).send({
       message: "Appointment details fetched successfully",
       success: true,
-      data: appointmentList,
+      data: appointmentDetails,
     });
   } catch (err) {
     console.log("err", err);
