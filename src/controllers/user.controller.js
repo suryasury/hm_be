@@ -121,15 +121,45 @@ exports.login = async (req, res) => {
 
 exports.userDetails = async (req, res) => {
   try {
+    let userDetails = req.user;
+    if (userDetails.profilePictureUrl) {
+      const preSignedUrl = await getPreSignedUrl(userDetails.profilePictureUrl);
+      userDetails.signedUrl = preSignedUrl;
+    }
     res.status(httpStatus.OK).send({
       message: "User details fetched successfully",
       success: true,
-      data: req.user,
+      data: userDetails,
     });
   } catch (err) {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error fetching user details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updateUserDetails = async (req, res) => {
+  try {
+    let userDetails = req.body;
+    let { id } = req.user;
+    let updatedUserDetails = await prisma.patients.update({
+      where: {
+        id,
+      },
+      data: userDetails,
+    });
+    res.status(httpStatus.OK).send({
+      message: "Profile updated",
+      success: true,
+      data: updatedUserDetails,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error updating profile",
       success: false,
       err: err,
     });

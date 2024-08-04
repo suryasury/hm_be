@@ -6,6 +6,11 @@ const userController = require("../controllers").userController;
 router.post("/signup", userController.signUp);
 router.post("/login", userController.login);
 router.get("/details", verifyAccessToken, userController.userDetails);
+router.patch(
+  "/profile/details/update",
+  verifyAccessToken,
+  userController.updateUserDetails,
+);
 router.get("/doctors/list", verifyAccessToken, userController.doctorList);
 router.get(
   "/slots/weekdaylist",

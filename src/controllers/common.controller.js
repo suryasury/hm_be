@@ -12,6 +12,8 @@ const s3 = new S3Client({
   region: "ap-south-1",
 });
 const httpStatus = require("http-status");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 exports.uploadCustomerMedicalRecords = async (req, res) => {
   try {
@@ -21,28 +23,8 @@ exports.uploadCustomerMedicalRecords = async (req, res) => {
       let pathInBucket = `patients/${id}/records/${Date.now().toString()}-${
         file.originalname
       }`;
-      const params = {
-        Bucket: process.env.BUCKET_NAME_S3,
-        Key: pathInBucket,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      };
-      const putCommand = new PutObjectCommand(params);
-      await s3.send(putCommand);
-      delete params.Body;
-      delete params.ContentType;
-      const getCommand = new GetObjectCommand(params);
-      const preSignedUrl = await getSignedUrl(s3, getCommand, {
-        expiresIn: 3600,
-      });
-      let fileNameArr = file.originalname.split(".");
-      return {
-        signedUrl: preSignedUrl,
-        bucketPath: pathInBucket,
-        fileName: file.originalname,
-        contentType: file.mimetype,
-        fileExtension: fileNameArr[fileNameArr.length - 1].toUpperCase(),
-      };
+      const serviceResponse = await this.uploadDocumentToS3(file, pathInBucket);
+      return serviceResponse;
     });
     let result = await Promise.all(filePromises);
     res.status(httpStatus.OK).send({
@@ -57,6 +39,70 @@ exports.uploadCustomerMedicalRecords = async (req, res) => {
       success: false,
       err: err,
     });
+  }
+};
+
+exports.updateUserProfilePicture = async (req, res) => {
+  try {
+    let { id } = req.user;
+    const file = req.file;
+    const bucketPath = `patients/${id}/profilepicture/${Date.now().toString()}-${
+      file.originalname
+    }`;
+    let serviceResponse = await this.uploadDocumentToS3(file, bucketPath);
+    await prisma.patients.update({
+      where: {
+        id,
+      },
+      data: {
+        profilePictureUrl: serviceResponse.bucketPath,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Profile picture updated",
+      success: true,
+      data: {
+        signedUrl: serviceResponse.signedUrl,
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error updating profile picture",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.uploadDocumentToS3 = async (file, bucketPath) => {
+  try {
+    let pathInBucket = bucketPath;
+    const params = {
+      Bucket: process.env.BUCKET_NAME_S3,
+      Key: pathInBucket,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    };
+    const putCommand = new PutObjectCommand(params);
+    await s3.send(putCommand);
+    delete params.Body;
+    delete params.ContentType;
+    const getCommand = new GetObjectCommand(params);
+    const preSignedUrl = await getSignedUrl(s3, getCommand, {
+      expiresIn: 3600,
+    });
+    let fileNameArr = file.originalname.split(".");
+    return {
+      signedUrl: preSignedUrl,
+      bucketPath: pathInBucket,
+      fileName: file.originalname,
+      contentType: file.mimetype,
+      fileExtension: fileNameArr[fileNameArr.length - 1].toUpperCase(),
+    };
+  } catch (err) {
+    console.log("err", err);
+    throw err;
   }
 };
 

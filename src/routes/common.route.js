@@ -23,4 +23,11 @@ router.post(
   commonController.uploadCustomerMedicalRecords,
 );
 
+router.post(
+  "/customer/upload/profilepicture",
+  verifyUserAccessToken,
+  upload.single("file"),
+  commonController.updateUserProfilePicture,
+);
+
 module.exports = router;
