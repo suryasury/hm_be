@@ -9,7 +9,12 @@ process.env.PWD = process.cwd();
 
 const app = express();
 
-app.use(cors({ credentials: true, origin: ["http://localhost:5173"] }));
+app.use(
+  cors({
+    credentials: true,
+    origin: ["http://localhost:5173", "https://dev-patient.tech42.in"],
+  }),
+);
 app.use(cookieParser());
 
 app.use(express.urlencoded({ extended: true }));
