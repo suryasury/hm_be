@@ -441,10 +441,10 @@ exports.getAppointmentDetails = async (req, res) => {
 exports.getPrescriptionDetails = async (req, res) => {
   try {
     let date = req.query.date;
-    let { userId } = req.user;
+    let { id } = req.user;
     let prescriptionList = await prisma.patientPrescription.findMany({
       where: {
-        patientId: userId,
+        patientId: id,
       },
       include: {
         prescriptionDays: {
