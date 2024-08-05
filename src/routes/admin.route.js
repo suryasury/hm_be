@@ -12,5 +12,6 @@ router.post(
   "/hospital/appointment/update/status",
   adminController.updateAppointmentStatus,
 );
+router.post("/hospital/medication/create", adminController.createMedication);
 
 module.exports = router;

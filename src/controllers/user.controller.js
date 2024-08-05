@@ -400,11 +400,19 @@ exports.getAppointmentDetails = async (req, res) => {
         patientAppointmentDocs: true,
         patientPrescription: {
           include: {
-            prescriptionDays: {
-              include: {
-                prescriptionTimeOfDay: true,
+            medicationStock: {
+              select: {
+                id: true,
+                medicationName: true,
+                medicationDosage: true,
+                description: true,
               },
             },
+            // prescriptionDays: {
+            //   include: {
+            //     prescriptionTimeOfDay: true,
+            //   },
+            // },
           },
         },
       },
@@ -447,6 +455,7 @@ exports.getPrescriptionDetails = async (req, res) => {
         patientId: id,
       },
       include: {
+        medicationStock: true,
         prescriptionDays: {
           where: {
             prescriptionDate: new Date(date),
@@ -471,8 +480,8 @@ exports.getPrescriptionDetails = async (req, res) => {
             appointmentId: prescription.appointmentId,
             hospitalId: prescription.hospitalId,
             patientId: prescription.patientId,
-            medicationName: prescription.medicationName,
-            medicationDosage: prescription.medicationDosage,
+            medicationName: prescription.medicationStock.medicationName,
+            medicationDosage: prescription.medicationStock.medicationDosage,
             foodRelation: prescription.foodRelation,
             prescriptionDate: pDays.prescriptionDate,
             prescriptionDayId: pDays.id,
@@ -480,6 +489,7 @@ exports.getPrescriptionDetails = async (req, res) => {
             isPrescriptionTakenForTheDay: pDays.isPrescriptionTakenForTheDay,
             prescriptionTimeOfDay: pTimeOfDay.timeOfDay,
             isPrescriptionTaken: pTimeOfDay.isPrescriptionTaken,
+            prescriptionStockId: prescription.prescriptionStockId,
           };
           if (pTimeOfDay.timeOfDay === "MORNING") {
             morningPrescription.push(prescriptionResult);

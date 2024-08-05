@@ -228,8 +228,7 @@ exports.updateAppointmentStatus = async (req, res) => {
               let prescriptionDetails = await prisma.patientPrescription.create(
                 {
                   data: {
-                    medicationName: prescription.medicationName,
-                    medicationDosage: prescription.medicationDosage,
+                    medicationStockId: prescription.medicationStockId,
                     durationInDays: prescription.durationInDays,
                     foodRelation: prescription.foodRelation,
                     appointmentId: appointmentId,
@@ -293,6 +292,29 @@ exports.updateAppointmentStatus = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error updating appointment status",
+      success: true,
+      err: err,
+    });
+  }
+};
+
+exports.createMedication = async (req, res) => {
+  try {
+    let medicationDetails = req.body;
+
+    let response = await prisma.medicationStocks.create({
+      data: medicationDetails,
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "Medication created",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error creating medication",
       success: true,
       err: err,
     });

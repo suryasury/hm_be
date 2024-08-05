@@ -36,22 +36,41 @@ enum foodRelationEnum {
   WITH_MEAL
 }
 
+enum dosageFormEnum {
+  Tablet
+  Capsule
+  Powder
+  Ointment
+  Cream
+  Gel
+  Syrup
+  Pastes
+  Granules
+  Pellets
+  Lozenges
+  Elixirs
+  Tinctures
+  Liniments
+}
+
 model hospitals {
-  id                  String                @id @default(cuid())
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  name                String
-  isd_code            String?
-  address             String
-  phoneNumber         String
-  email               String
+  id                   String                 @id @default(cuid())
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  name                 String
+  isd_code             String?
+  address              String
+  phoneNumber          String
+  email                String
   // roles         roles[]
   // roleFeatures  roleFeatures[]
-  users               users[]
+  users                users[]
   // patients      patients[]
-  appointments        appointments[]
-  slots               slots[]
-  patientPrescription patientPrescription[]
+  appointments         appointments[]
+  slots                slots[]
+  patientPrescription  patientPrescription[]
+  medicationStocks     medicationStocks[]
+  appointmentFeedbacks appointmentFeedbacks[]
 }
 
 // model roles {
@@ -130,20 +149,21 @@ model weekdays {
 }
 
 model doctorSlots {
-  id           String         @id @default(cuid())
-  doctorId     String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  slotId       String
-  weekDaysId   String
-  slotLimit    Int            @default(0)
-  isEnabled    Boolean        @default(true)
-  isActive     Boolean        @default(true)
-  isDeleted    Boolean        @default(false)
-  doctor       users          @relation(fields: [doctorId], references: [id])
-  slot         slots          @relation(fields: [slotId], references: [id])
-  dayOfWeek    weekdays       @relation(fields: [weekDaysId], references: [id])
-  appointments appointments[]
+  id                         String         @id @default(cuid())
+  doctorId                   String
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+  slotId                     String
+  weekDaysId                 String
+  isDoctorAvailableForTheDay Boolean        @default(false)
+  slotLimit                  Int            @default(0)
+  isEnabled                  Boolean        @default(true)
+  isActive                   Boolean        @default(true)
+  isDeleted                  Boolean        @default(false)
+  doctor                     users          @relation(fields: [doctorId], references: [id])
+  slot                       slots          @relation(fields: [slotId], references: [id])
+  dayOfWeek                  weekdays       @relation(fields: [weekDaysId], references: [id])
+  appointments               appointments[]
 }
 
 model patients {
@@ -171,6 +191,7 @@ model patients {
   appointments           appointments[]
   patientPrescription    patientPrescription[]
   patientAppointmentDocs patientAppointmentDocs[]
+  appointmentFeedbacks   appointmentFeedbacks[]
   // hospitalId             String
   // hospital               hospitals @relation(fields: [hospitalId], references: [id])
   // @@unique([email], name: "patientEmailUniqueIdentifierr")
@@ -195,23 +216,24 @@ model appointments {
   doctorSlots            doctorSlots              @relation(fields: [doctorSlotId], references: [id])
   patientPrescription    patientPrescription[]
   patientAppointmentDocs patientAppointmentDocs[]
+  appointmentFeedbacks   appointmentFeedbacks[]
 }
 
 model patientPrescription {
-  id               String             @id @default(cuid())
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  appointmentId    String
-  appointment      appointments       @relation(fields: [appointmentId], references: [id])
-  patientId        String
-  patient          patients           @relation(fields: [patientId], references: [id])
-  hospitalId       String
-  hospital         hospitals          @relation(fields: [hospitalId], references: [id])
-  medicationName   String
-  medicationDosage String
-  durationInDays   Int
-  foodRelation     foodRelationEnum
-  prescriptionDays prescriptionDays[]
+  id                String             @id @default(cuid())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  appointmentId     String
+  appointment       appointments       @relation(fields: [appointmentId], references: [id])
+  patientId         String
+  patient           patients           @relation(fields: [patientId], references: [id])
+  hospitalId        String
+  hospital          hospitals          @relation(fields: [hospitalId], references: [id])
+  durationInDays    Int
+  medicationStockId String
+  medicationStock   medicationStocks   @relation(fields: [medicationStockId], references: [id])
+  foodRelation      foodRelationEnum
+  prescriptionDays  prescriptionDays[]
 }
 
 model prescriptionDays {
@@ -249,4 +271,36 @@ model patientAppointmentDocs {
   isDeleted     Boolean      @default(false)
   patient       patients     @relation(fields: [patientId], references: [id])
   appointment   appointments @relation(fields: [appointmentId], references: [id])
+}
+
+model appointmentFeedbacks {
+  id                  String       @id @default(cuid())
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  isActive            Boolean      @default(false)
+  isDeleted           Boolean      @default(false)
+  appointmentId       String
+  patientId           String
+  hospitalId          String
+  overallSatisfaction Int
+  feedBackRemarks     String
+  appointment         appointments @relation(fields: [appointmentId], references: [id])
+  patient             patients     @relation(fields: [patientId], references: [id])
+  hospital            hospitals    @relation(fields: [hospitalId], references: [id])
+}
+
+model medicationStocks {
+  id                  String                @id @default(cuid())
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  medicationName      String
+  code                String
+  description         String
+  manufacturer        String
+  expirationDate      DateTime
+  dosageForm          dosageFormEnum
+  medicationDosage    String
+  hospitalId          String
+  hospital            hospitals             @relation(fields: [hospitalId], references: [id])
+  patientPrescription patientPrescription[]
 }
