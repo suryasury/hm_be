@@ -3,6 +3,9 @@ const {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  CreateMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  UploadPartCommand,
 } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const s3 = new S3Client({
@@ -10,11 +13,13 @@ const s3 = new S3Client({
     accessKeyId: process.env.FILE_UPLOADER_AKEY,
     secretAccessKey: process.env.FILE_UPLOADER_SKEY,
   },
+  // useAccelerateEndpoint: true,
   region: "ap-south-1",
 });
 const httpStatus = require("http-status");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const PART_SIZE = 5 * 1024 * 1024; // 5 MB
 
 exports.uploadCustomerMedicalRecords = async (req, res) => {
   try {
@@ -79,17 +84,59 @@ exports.updateUserProfilePicture = async (req, res) => {
 exports.uploadDocumentToS3 = async (file, bucketPath) => {
   try {
     let pathInBucket = bucketPath;
-    const params = {
+
+    if (file.size <= PART_SIZE) {
+      const params = {
+        Bucket: process.env.BUCKET_NAME_S3,
+        Key: pathInBucket,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      };
+      const putCommand = new PutObjectCommand(params);
+      await s3.send(putCommand);
+      delete params.Body;
+      delete params.ContentType;
+    } else {
+      const params = {
+        Bucket: process.env.BUCKET_NAME_S3,
+        Key: pathInBucket,
+        ContentType: file.mimetype,
+      };
+      const multipartUploadCommand = new CreateMultipartUploadCommand(params);
+      const multipartDetails = await s3.send(multipartUploadCommand);
+      const uploadId = multipartDetails.UploadId;
+      let partNumber = 1;
+      let offset = 0;
+      let promiseArray = [];
+      while (offset < file.size) {
+        const partParams = {
+          Bucket: process.env.BUCKET_NAME_S3,
+          Key: pathInBucket,
+          Body: file.buffer.slice(offset, offset + PART_SIZE),
+          UploadId: uploadId,
+          PartNumber: partNumber,
+        };
+        promiseArray.push(uploadPart(partParams, partNumber));
+        offset += PART_SIZE;
+        partNumber++;
+      }
+      const partETags = await Promise.all(promiseArray);
+      const multipartCompleteParams = {
+        Bucket: process.env.BUCKET_NAME_S3,
+        Key: pathInBucket,
+        UploadId: uploadId,
+        MultipartUpload: { Parts: partETags },
+      };
+      const multiPartCompleteCommand = new CompleteMultipartUploadCommand(
+        multipartCompleteParams,
+      );
+      await s3.send(multiPartCompleteCommand);
+    }
+    const getParams = {
       Bucket: process.env.BUCKET_NAME_S3,
       Key: pathInBucket,
-      Body: file.buffer,
-      ContentType: file.mimetype,
     };
-    const putCommand = new PutObjectCommand(params);
-    await s3.send(putCommand);
-    delete params.Body;
-    delete params.ContentType;
-    const getCommand = new GetObjectCommand(params);
+    const getCommand = new GetObjectCommand(getParams);
     const preSignedUrl = await getSignedUrl(s3, getCommand, {
       expiresIn: 3600,
     });
@@ -104,6 +151,17 @@ exports.uploadDocumentToS3 = async (file, bucketPath) => {
   } catch (err) {
     console.log("err", err);
     throw err;
+  }
+};
+
+const uploadPart = async (params, partNumber) => {
+  try {
+    const command = new UploadPartCommand(params);
+    const data = await s3.send(command);
+    return { ETag: data.ETag, PartNumber: partNumber };
+  } catch (error) {
+    console.error("Error uploading part:", error);
+    throw error;
   }
 };
 
