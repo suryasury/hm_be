@@ -71,6 +71,7 @@ model hospitals {
   patientPrescription  patientPrescription[]
   medicationStocks     medicationStocks[]
   appointmentFeedbacks appointmentFeedbacks[]
+  hospitalPatients     hospitalPatients[]
 }
 
 // model roles {
@@ -129,6 +130,8 @@ model users {
   hospital          hospitals      @relation(fields: [hospitalId], references: [id])
   appointments      appointments[]
   doctorSlots       doctorSlots[]
+
+  @@index([email, phoneNumber])
 }
 
 model slots {
@@ -192,9 +195,24 @@ model patients {
   patientPrescription    patientPrescription[]
   patientAppointmentDocs patientAppointmentDocs[]
   appointmentFeedbacks   appointmentFeedbacks[]
+  hospitalPatients       hospitalPatients[]
   // hospitalId             String
   // hospital               hospitals @relation(fields: [hospitalId], references: [id])
   // @@unique([email], name: "patientEmailUniqueIdentifierr")
+
+  @@index([email, phoneNumber])
+}
+
+model hospitalPatients {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  hospitalId String
+  patientId  String
+  hospital   hospitals @relation(fields: [hospitalId], references: [id])
+  patient    patients  @relation(fields: [patientId], references: [id])
+
+  @@index([hospitalId, patientId])
 }
 
 model appointments {
@@ -210,13 +228,14 @@ model appointments {
   decease                String?
   appointmentStatus      appointmentStatuses
   appointmentDate        DateTime
+  isFeedbackProvided     Boolean                  @default(false)
   hospital               hospitals                @relation(fields: [hospitalId], references: [id])
   patient                patients                 @relation(fields: [patientId], references: [id])
   doctor                 users                    @relation(fields: [doctorId], references: [id])
   doctorSlots            doctorSlots              @relation(fields: [doctorSlotId], references: [id])
   patientPrescription    patientPrescription[]
   patientAppointmentDocs patientAppointmentDocs[]
-  appointmentFeedbacks   appointmentFeedbacks[]
+  appointmentFeedbacks   appointmentFeedbacks?
 }
 
 model patientPrescription {
@@ -279,7 +298,7 @@ model appointmentFeedbacks {
   updatedAt           DateTime     @updatedAt
   isActive            Boolean      @default(false)
   isDeleted           Boolean      @default(false)
-  appointmentId       String
+  appointmentId       String       @unique
   patientId           String
   hospitalId          String
   overallSatisfaction Int

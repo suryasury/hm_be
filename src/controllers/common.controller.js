@@ -2,6 +2,7 @@ const {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const s3 = new S3Client({
@@ -118,6 +119,23 @@ exports.getPreSignedUrl = async (path) => {
     });
     return preSignedUrl;
   } catch (err) {
+    console.log("err", err);
+    throw err;
+  }
+};
+
+exports.deleteDocumentFromS3 = async (bucketPath) => {
+  try {
+    let pathInBucket = bucketPath;
+    const params = {
+      Bucket: process.env.BUCKET_NAME_S3,
+      Key: pathInBucket,
+    };
+    const deleteCommand = new DeleteObjectCommand(params);
+    const serviceResponse = await s3.send(deleteCommand);
+    return serviceResponse;
+  } catch (err) {
+    console.log("err", err);
     throw err;
   }
 };

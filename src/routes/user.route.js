@@ -27,6 +27,11 @@ router.post(
   verifyAccessToken,
   userController.createAppointment,
 );
+router.patch(
+  "/appointment/update/:appointmentId",
+  verifyAccessToken,
+  userController.updateAppointmentDetails,
+);
 router.get(
   "/appointment/list",
   verifyAccessToken,
@@ -51,5 +56,15 @@ router.patch(
   "/prescription/medication/status/update",
   verifyAccessToken,
   userController.updatePatientPrescriptionStatus,
+);
+router.post(
+  "/appointment/feedback",
+  verifyAccessToken,
+  userController.createFeedbackForAppointment,
+);
+router.patch(
+  "/appointment/feedback/:feedbackId",
+  verifyAccessToken,
+  userController.updateFeedbackForAppointment,
 );
 module.exports = router;

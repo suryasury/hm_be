@@ -4,7 +4,10 @@ const hashPassword = require("../helpers/hashPassword");
 const validatePassword = require("../helpers/validatePassword");
 const generateAccesToken = require("../helpers/generateAccessToken");
 const determineTimePeriod = require("../helpers/timePeriod");
-const { getPreSignedUrl } = require("./common.controller");
+const {
+  getPreSignedUrl,
+  deleteDocumentFromS3,
+} = require("./common.controller");
 const prisma = new PrismaClient();
 
 exports.signUp = async (req, res) => {
@@ -288,6 +291,20 @@ exports.createAppointment = async (req, res) => {
         data: documentsData,
       });
     }
+    let hospitalPatient = await prisma.hospitalPatients.findFirst({
+      where: {
+        hospitalId: newAppointment.hospitalId,
+        patientId: id,
+      },
+    });
+    if (!hospitalPatient) {
+      await prisma.hospitalPatients.create({
+        data: {
+          hospitalId: newAppointment.hospitalId,
+          patientId: id,
+        },
+      });
+    }
     res.status(httpStatus.OK).send({
       message: "Appointment booked successfully",
       success: true,
@@ -391,6 +408,7 @@ exports.getAppointmentDetails = async (req, res) => {
         id: appointmentId,
       },
       include: {
+        appointmentFeedbacks: true,
         doctor: true,
         doctorSlots: {
           include: {
@@ -440,6 +458,71 @@ exports.getAppointmentDetails = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error fetching appointment details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updateAppointmentDetails = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { id } = req.user;
+    const appointmentDetails = req.body.appointmentDetails;
+    const removedDocsArray = req.body.removedDocuments || [];
+    const documents = req.body.documents || {};
+    if (appointmentDetails && Object.keys(appointmentDetails).length > 0) {
+      await prisma.appointments.update({
+        where: {
+          id: appointmentId,
+        },
+        data: appointmentDetails,
+      });
+    }
+
+    if (removedDocsArray.length > 0) {
+      await Promise.all(
+        removedDocsArray.map(async (removedDoc) => {
+          try {
+            await Promise.all([
+              await prisma.patientAppointmentDocs.delete({
+                where: {
+                  id: removedDoc.id,
+                },
+              }),
+              // await deleteDocumentFromS3(removedDoc.bucketPath),
+            ]);
+          } catch (err) {
+            throw err;
+          }
+        }),
+      );
+    }
+    if (documents.length > 0) {
+      const documentsData = documents.map((document) => {
+        return {
+          fileName: document.fileName,
+          bucketPath: document.bucketPath,
+          documentName: document.fileName,
+          fileExtension: document.fileExtension,
+          contentType: document.contentType,
+          patientId: id,
+          appointmentId: appointmentId,
+        };
+      });
+      await prisma.patientAppointmentDocs.createMany({
+        data: documentsData,
+      });
+    }
+    res.status(httpStatus.OK).send({
+      message: "Appointment details updated",
+      success: true,
+      data: appointmentDetails,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error updating appointment details",
       success: false,
       err: err,
     });
@@ -565,6 +648,66 @@ exports.updatePatientPrescriptionStatus = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error updating medication status",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.createFeedbackForAppointment = async (req, res) => {
+  try {
+    const feedbackDetails = req.body;
+    let { id } = req.user;
+    const response = await prisma.appointmentFeedbacks.create({
+      data: {
+        patientId: id,
+        ...feedbackDetails,
+      },
+    });
+    await prisma.appointments.update({
+      where: {
+        id: feedbackDetails.appointmentId,
+      },
+      data: {
+        isFeedbackProvided: true,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Thanks for the feedback",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error creating feedback",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updateFeedbackForAppointment = async (req, res) => {
+  try {
+    const feedbackDetails = req.body;
+    const feedbackId = req.params.feedbackId;
+    const response = await prisma.appointmentFeedbacks.update({
+      where: {
+        id: feedbackId,
+      },
+      data: {
+        ...feedbackDetails,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Feedback updated",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error updating feedback",
       success: false,
       err: err,
     });
