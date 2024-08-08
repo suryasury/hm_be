@@ -195,6 +195,48 @@ exports.createDoctorsSlot = async (req, res) => {
   }
 };
 
+exports.createAilment = async (req, res) => {
+  try {
+    let ailmentDetails = req.body;
+    let result = await prisma.ailment.create({
+      data: ailmentDetails,
+    });
+    res.status(httpStatus.OK).send({
+      message: "Ailment created successfully",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error creating ailment",
+      success: true,
+      err: err,
+    });
+  }
+};
+
+exports.createdocumentType = async (req, res) => {
+  try {
+    let docTypeDetails = req.body;
+    let result = await prisma.documentTypes.create({
+      data: docTypeDetails,
+    });
+    res.status(httpStatus.OK).send({
+      message: "Document type created",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error creating document type",
+      success: true,
+      err: err,
+    });
+  }
+};
+
 exports.updateAppointmentStatus = async (req, res) => {
   try {
     let appointmentId = req.body.appointmentId;

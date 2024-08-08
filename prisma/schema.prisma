@@ -72,6 +72,8 @@ model hospitals {
   medicationStocks     medicationStocks[]
   appointmentFeedbacks appointmentFeedbacks[]
   hospitalPatients     hospitalPatients[]
+  ailment              ailment[]
+  documentTypes        documentTypes[]
 }
 
 // model roles {
@@ -225,7 +227,7 @@ model appointments {
   hospitalId             String
   remarks                String?
   doctorRemarks          String?
-  decease                String?
+  ailmentId              String
   appointmentStatus      appointmentStatuses
   appointmentDate        DateTime
   isFeedbackProvided     Boolean                  @default(false)
@@ -233,6 +235,7 @@ model appointments {
   patient                patients                 @relation(fields: [patientId], references: [id])
   doctor                 users                    @relation(fields: [doctorId], references: [id])
   doctorSlots            doctorSlots              @relation(fields: [doctorSlotId], references: [id])
+  ailment                ailment                  @relation(references: [id], fields: [ailmentId])
   patientPrescription    patientPrescription[]
   patientAppointmentDocs patientAppointmentDocs[]
   appointmentFeedbacks   appointmentFeedbacks?
@@ -277,26 +280,28 @@ model prescriptionTimeOfDay {
 }
 
 model patientAppointmentDocs {
-  id            String       @id @default(cuid())
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  documentName  String
-  bucketPath    String
-  fileName      String
-  fileExtension String
-  contentType   String
-  patientId     String
-  appointmentId String
-  isDeleted     Boolean      @default(false)
-  patient       patients     @relation(fields: [patientId], references: [id])
-  appointment   appointments @relation(fields: [appointmentId], references: [id])
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  documentName   String
+  bucketPath     String
+  fileName       String
+  fileExtension  String
+  documentTypeId String
+  contentType    String
+  patientId      String
+  appointmentId  String
+  isDeleted      Boolean       @default(false)
+  patient        patients      @relation(fields: [patientId], references: [id])
+  appointment    appointments  @relation(fields: [appointmentId], references: [id])
+  documentTypes  documentTypes @relation(fields: [documentTypeId], references: [id])
 }
 
 model appointmentFeedbacks {
   id                  String       @id @default(cuid())
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
-  isActive            Boolean      @default(false)
+  isActive            Boolean      @default(true)
   isDeleted           Boolean      @default(false)
   appointmentId       String       @unique
   patientId           String
@@ -322,4 +327,32 @@ model medicationStocks {
   hospitalId          String
   hospital            hospitals             @relation(fields: [hospitalId], references: [id])
   patientPrescription patientPrescription[]
+}
+
+model ailment {
+  id           String         @id @default(cuid())
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  name         String
+  description  String?
+  isActive     Boolean        @default(true)
+  isDefault    Boolean        @default(false)
+  isDeleted    Boolean        @default(false)
+  hospitalId   String
+  appointments appointments[]
+  hopital      hospitals      @relation(fields: [hospitalId], references: [id])
+}
+
+model documentTypes {
+  id                     String                   @id @default(cuid())
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  name                   String
+  description            String?
+  isActive               Boolean                  @default(true)
+  isDeleted              Boolean                  @default(false)
+  isDefault              Boolean                  @default(false)
+  hospitalId             String
+  hopital                hospitals                @relation(fields: [hospitalId], references: [id])
+  patientAppointmentDocs patientAppointmentDocs[]
 }

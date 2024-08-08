@@ -285,6 +285,7 @@ exports.createAppointment = async (req, res) => {
           contentType: document.contentType,
           patientId: id,
           appointmentId: newAppointment.id,
+          documentTypeId: document.documentTypeId,
         };
       });
       await prisma.patientAppointmentDocs.createMany({
@@ -313,7 +314,7 @@ exports.createAppointment = async (req, res) => {
   } catch (err) {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: "Error fetching user details",
+      message: "Error creating appointment",
       success: false,
       err: err,
     });
@@ -339,6 +340,13 @@ exports.getAppointmentList = async (req, res) => {
       orderBy: [
         {
           appointmentDate: "asc",
+        },
+        {
+          doctorSlots: {
+            slot: {
+              startTime: "asc",
+            },
+          },
         },
       ],
     });
@@ -415,7 +423,22 @@ exports.getAppointmentDetails = async (req, res) => {
             slot: true,
           },
         },
-        patientAppointmentDocs: true,
+        patientAppointmentDocs: {
+          include: {
+            documentTypes: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        ailment: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         patientPrescription: {
           include: {
             medicationStock: {
@@ -508,6 +531,7 @@ exports.updateAppointmentDetails = async (req, res) => {
           contentType: document.contentType,
           patientId: id,
           appointmentId: appointmentId,
+          documentTypeId: document.documentTypeId,
         };
       });
       await prisma.patientAppointmentDocs.createMany({
@@ -708,6 +732,70 @@ exports.updateFeedbackForAppointment = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error updating feedback",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getAilmentList = async (req, res) => {
+  try {
+    const hospitalId = req.params.hospitalId;
+    const response = await prisma.ailment.findMany({
+      where: {
+        hospitalId: hospitalId,
+        isActive: true,
+        isDeleted: false,
+      },
+      select: {
+        name: true,
+        id: true,
+      },
+      orderBy: {
+        isDefault: "asc",
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Ailment list fetched",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching ailment",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getDocumentTypes = async (req, res) => {
+  try {
+    const hospitalId = req.params.hospitalId;
+    const response = await prisma.documentTypes.findMany({
+      where: {
+        hospitalId: hospitalId,
+        isActive: true,
+        isDeleted: false,
+      },
+      select: {
+        name: true,
+        id: true,
+      },
+      orderBy: {
+        isDefault: "asc",
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Document type list fetched",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching document types",
       success: false,
       err: err,
     });

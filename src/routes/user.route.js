@@ -67,4 +67,14 @@ router.patch(
   verifyAccessToken,
   userController.updateFeedbackForAppointment,
 );
+router.get(
+  "/ailment/list/:hospitalId",
+  verifyAccessToken,
+  userController.getAilmentList,
+);
+router.get(
+  "/documenttype/list/:hospitalId",
+  verifyAccessToken,
+  userController.getDocumentTypes,
+);
 module.exports = router;
