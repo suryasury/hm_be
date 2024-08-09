@@ -100,14 +100,14 @@ exports.login = async (req, res) => {
           data: {},
         });
       } else {
-        return res.status(httpStatus.UNAUTHORIZED).send({
+        return res.status(httpStatus.FORBIDDEN).send({
           message: "Invalid user name or password",
           success: false,
           data: {},
         });
       }
     }
-    res.status(httpStatus.UNAUTHORIZED).send({
+    res.status(httpStatus.FORBIDDEN).send({
       message: "User not found. Please signup",
       success: false,
       data: {},
