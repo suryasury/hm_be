@@ -2,12 +2,14 @@ const express = require("express");
 const cors = require("cors");
 const routes = require("./src/routes");
 const cookieParser = require("cookie-parser");
+const compression = require("compression");
 
 require("dotenv").config();
 
 process.env.PWD = process.cwd();
 
 const app = express();
+app.use(compression());
 
 app.use(
   cors({
