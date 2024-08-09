@@ -14,7 +14,11 @@ app.use(compression());
 app.use(
   cors({
     credentials: true,
-    origin: ["http://localhost:5173", "https://dev-patient.tech42.in"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:4173",
+      "https://dev-patient.tech42.in",
+    ],
   }),
 );
 app.use(cookieParser());
