@@ -1,5 +1,6 @@
 const httpStatus = require("http-status");
 const { PrismaClient } = require("@prisma/client");
+const { convertToDateTime } = require("../helpers/timePeriod");
 const prisma = new PrismaClient();
 
 exports.getRoles = async (req, res) => {
@@ -125,16 +126,22 @@ exports.createSlots = async (req, res) => {
       const endMinutes = currentSlotEnd.getMinutes();
       const startAMPM = startHours >= 12 ? "PM" : "AM";
       const endAMPM = endHours >= 12 ? "PM" : "AM";
-      const startString = `${startHours % 12 || 12}:${startMinutes
-        .toString()
-        .padStart(2, "0")} ${startAMPM}`;
-      const endString = `${endHours % 12 || 12}:${endMinutes
-        .toString()
-        .padStart(2, "0")} ${endAMPM}`;
+      const startString = `${String(startHours % 12 || 12).padStart(
+        2,
+        "0",
+      )}:${startMinutes.toString().padStart(2, "0")} ${startAMPM}`;
+      const endString = `${String(endHours % 12 || 12).padStart(
+        2,
+        "0",
+      )}:${endMinutes.toString().padStart(2, "0")} ${endAMPM}`;
+      let slotStartTimeInDate = convertToDateTime(startString);
+      let slotEndTimeInDate = convertToDateTime(endString);
       slots.push({
         startTime: startString,
         endTime: endString,
         hospitalId: hospitalId,
+        startTimeInDateTime: slotStartTimeInDate,
+        endTimeInDateTime: slotEndTimeInDate,
       });
       currentSlotStart = currentSlotEnd;
     }

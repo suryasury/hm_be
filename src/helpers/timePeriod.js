@@ -1,4 +1,4 @@
-function determineTimePeriod(startTime) {
+exports.determineTimePeriod = (startTime) => {
   const [time, period] = startTime.split(" ");
   const [hours, minutes] = time.split(":");
   let hour = parseInt(hours, 10);
@@ -12,6 +12,22 @@ function determineTimePeriod(startTime) {
   } else {
     return "evening";
   }
-}
+};
 
-module.exports = determineTimePeriod;
+exports.convertToDateTime = (timeString) => {
+  const [time, period] = timeString.split(" ");
+  const [hours, minutes] = time.split(":");
+
+  let hoursNum = parseInt(hours, 10);
+  if (period === "PM") {
+    hoursNum += 12;
+    if (hoursNum === 24) hoursNum = 12;
+  } else if (hoursNum === 12) {
+    hoursNum = 0;
+  }
+
+  const date = new Date();
+  date.setHours(hoursNum, parseInt(minutes, 10), 0, 0);
+
+  return date.toISOString();
+};

@@ -26,7 +26,7 @@ enum appointmentStatuses {
   SCHEDULED
   PENDING
   COMPLETED
-  CANCELED
+  CANCELLED
   APPROVED
 }
 
@@ -137,14 +137,16 @@ model users {
 }
 
 model slots {
-  id          String        @id @default(cuid())
-  startTime   String
-  endTime     String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  hospitalId  String
-  hospital    hospitals     @relation(fields: [hospitalId], references: [id])
-  doctorSlots doctorSlots[]
+  id                  String        @id @default(cuid())
+  startTime           String
+  endTime             String
+  startTimeInDateTime DateTime
+  endTimeInDateTime   DateTime
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  hospitalId          String
+  hospital            hospitals     @relation(fields: [hospitalId], references: [id])
+  doctorSlots         doctorSlots[]
 }
 
 model weekdays {
@@ -228,6 +230,7 @@ model appointments {
   remarks                String?
   doctorRemarks          String?
   ailmentId              String
+  tokenNumber            String
   appointmentStatus      appointmentStatuses
   appointmentDate        DateTime
   isFeedbackProvided     Boolean                  @default(false)

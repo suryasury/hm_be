@@ -3,7 +3,7 @@ const { PrismaClient } = require("@prisma/client");
 const hashPassword = require("../helpers/hashPassword");
 const validatePassword = require("../helpers/validatePassword");
 const generateAccesToken = require("../helpers/generateAccessToken");
-const determineTimePeriod = require("../helpers/timePeriod");
+const { determineTimePeriod } = require("../helpers/timePeriod");
 const {
   getPreSignedUrl,
   deleteDocumentFromS3,
@@ -289,10 +289,12 @@ exports.createAppointment = async (req, res) => {
     let documents = appointmentDetails.documents || [];
     delete appointmentDetails.documents;
     let { id } = req.user;
+
     let newAppointment = await prisma.appointments.create({
       data: {
         appointmentStatus: "SCHEDULED",
         patientId: id,
+        tokenNumber: "0001",
         ...appointmentDetails,
       },
     });
@@ -365,7 +367,7 @@ exports.getAppointmentList = async (req, res) => {
         {
           doctorSlots: {
             slot: {
-              startTime: "asc",
+              startTimeInDateTime: "asc",
             },
           },
         },
@@ -408,6 +410,13 @@ exports.getAppointmentHistoryList = async (req, res) => {
       orderBy: [
         {
           appointmentDate: "asc",
+        },
+        {
+          doctorSlots: {
+            slot: {
+              startTimeInDateTime: "asc",
+            },
+          },
         },
       ],
     });
@@ -560,7 +569,7 @@ exports.updateAppointmentDetails = async (req, res) => {
       });
     }
     res.status(httpStatus.OK).send({
-      message: "Appointment details updated",
+      message: "Appointment updated",
       success: true,
       data: appointmentDetails,
     });
