@@ -148,6 +148,27 @@ exports.updateUserDetails = async (req, res) => {
   try {
     let userDetails = req.body;
     let { id } = req.user;
+    if (userDetails.email || userDetails.phoneNumber) {
+      let isUserExist = await prisma.patients.findFirst({
+        where: {
+          OR: [
+            {
+              email: userDetails.email,
+            },
+            {
+              phoneNumber: userDetails.phoneNumber,
+            },
+          ],
+        },
+      });
+      if (isUserExist) {
+        return res.status(httpStatus.CONFLICT).send({
+          message: "Email or phone number already exists",
+          success: false,
+          data: {},
+        });
+      }
+    }
     let updatedUserDetails = await prisma.patients.update({
       where: {
         id,
