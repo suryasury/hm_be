@@ -1,19 +1,84 @@
 const express = require("express");
+const verifyAdminAccessToken = require("../middlewares/verifyAdminAccessToken");
 const router = express.Router();
 const adminController = require("../controllers").adminController;
 
-router.get("/login", adminController.getRoles);
-router.post("/hospital/create", adminController.createHospitals);
-router.post("/hospital/doctor/create", adminController.createDoctors);
-router.post("/hospital/weekdays/create", adminController.createWeekDays);
-router.post("/hospital/slots/create", adminController.createSlots);
-router.post("/hospital/doctorslot/create", adminController.createDoctorsSlot);
-router.post("/hospital/ailment/create", adminController.createAilment);
-router.post("/hospital/doctype/create", adminController.createdocumentType);
+router.get("/login", adminController.login);
+router.post("/signup", adminController.signUp);
+router.post(
+  "/hospital/create",
+  // verifyAdminAccessToken,
+  adminController.createHospitals,
+);
+router.post(
+  "/hospital/doctor/create",
+  verifyAdminAccessToken,
+  adminController.createDoctors,
+);
+router.post(
+  "/hospital/weekdays/create",
+  verifyAdminAccessToken,
+  adminController.createWeekDays,
+);
+router.post(
+  "/hospital/slots/create",
+  verifyAdminAccessToken,
+  adminController.createSlots,
+);
+router.post(
+  "/hospital/doctorslot/create",
+  verifyAdminAccessToken,
+  adminController.createDoctorsSlot,
+);
+router.post(
+  "/hospital/ailment/create",
+  verifyAdminAccessToken,
+  adminController.createAilment,
+);
+router.patch(
+  "/hospital/ailment/update/:ailmentId",
+  verifyAdminAccessToken,
+  adminController.updateAilment,
+);
+router.get(
+  "/hospital/ailment/list",
+  verifyAdminAccessToken,
+  adminController.getAlimentList,
+);
+router.delete(
+  "/hospital/ailment/delete/:ailmentId",
+  verifyAdminAccessToken,
+  adminController.deleteAilment,
+);
+router.post(
+  "/hospital/doctype/create",
+  verifyAdminAccessToken,
+  adminController.createdocumentType,
+);
 router.post(
   "/hospital/appointment/update/status",
+  verifyAdminAccessToken,
   adminController.updateAppointmentStatus,
 );
-router.post("/hospital/medication/create", adminController.createMedication);
+router.post(
+  "/hospital/medication/create",
+  verifyAdminAccessToken,
+  adminController.createMedication,
+);
+router.get(
+  "/hospital/medication/list",
+  verifyAdminAccessToken,
+  adminController.getMedicationList,
+);
+router.patch(
+  "/hospital/medication/update/:medicationId",
+  verifyAdminAccessToken,
+  adminController.updateMedicationDetails,
+);
+router.delete(
+  "/hospital/medication/delete/:medicationId",
+  verifyAdminAccessToken,
+  adminController.deleteMedication,
+);
 
 module.exports = router;

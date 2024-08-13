@@ -6,7 +6,7 @@ const generateAccesToken = require("../helpers/generateAccessToken");
 const { determineTimePeriod } = require("../helpers/timePeriod");
 const {
   getPreSignedUrl,
-  deleteDocumentFromS3,
+  // deleteDocumentFromS3,
 } = require("./common.controller");
 const prisma = new PrismaClient();
 
@@ -65,7 +65,6 @@ exports.signUp = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    console.log("login controller");
     let loginDetails = req.body;
     let whereClause = {};
     if (loginDetails.userNameType === "EMAIL") {

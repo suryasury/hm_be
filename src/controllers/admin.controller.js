@@ -1,10 +1,119 @@
 const httpStatus = require("http-status");
 const { PrismaClient } = require("@prisma/client");
 const { convertToDateTime } = require("../helpers/timePeriod");
+const validatePassword = require("../helpers/validatePassword");
+const generateAccesToken = require("../helpers/generateAccessToken");
+const hashPassword = require("../helpers/hashPassword");
 const prisma = new PrismaClient();
 
-exports.getRoles = async (req, res) => {
-  res.status(200).send({ message: "Api is working" });
+exports.login = async (req, res) => {
+  try {
+    let loginDetails = req.body;
+    let whereClause = {};
+    if (loginDetails.userNameType === "EMAIL") {
+      whereClause = {
+        email: loginDetails.userName,
+      };
+    } else {
+      whereClause = {
+        phoneNumber: loginDetails.userName,
+      };
+    }
+    let userDetails = await prisma.users.findUnique({
+      where: whereClause,
+    });
+    if (userDetails) {
+      const isValidPassword = validatePassword(
+        loginDetails.password,
+        userDetails.password,
+      );
+      if (isValidPassword) {
+        const jwtToken = generateAccesToken({
+          userId: userDetails.id,
+        });
+        res.cookie("sessionToken", jwtToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+        });
+        return res.status(httpStatus.OK).send({
+          message: "User Logged in successfully",
+          success: true,
+          data: {},
+        });
+      } else {
+        return res.status(httpStatus.FORBIDDEN).send({
+          message: "Invalid user name or password",
+          success: false,
+          data: {},
+        });
+      }
+    }
+    res.status(httpStatus.FORBIDDEN).send({
+      message: "User not found. Please signup",
+      success: false,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error on login",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.signUp = async (req, res) => {
+  try {
+    let userDetails = req.body;
+    const hashedPassword = hashPassword(userDetails.password);
+    userDetails.password = hashedPassword;
+    let isUserExist = await prisma.users.findFirst({
+      where: {
+        OR: [
+          {
+            phoneNumber: userDetails.phoneNumber,
+          },
+          {
+            email: userDetails.email,
+          },
+        ],
+      },
+    });
+    if (isUserExist) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "User already exist with given mobile number or email",
+        success: false,
+        data: {},
+      });
+    }
+    let result = await prisma.users.create({
+      data: userDetails,
+    });
+    const jwtToken = generateAccesToken({
+      userId: result.id,
+    });
+    res.cookie("sessionToken", jwtToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
+    res.status(httpStatus.OK).send({
+      message: "User created successfully",
+      success: true,
+      data: {
+        userDetails: result,
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error creating hospital",
+      success: false,
+      err: err,
+    });
+  }
 };
 
 exports.createHospitals = async (req, res) => {
@@ -22,7 +131,7 @@ exports.createHospitals = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating hospital",
-      success: true,
+      success: false,
       err: err,
     });
   }
@@ -43,7 +152,7 @@ exports.createDoctors = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating doctor",
-      success: true,
+      success: false,
       err: err,
     });
   }
@@ -86,7 +195,7 @@ exports.createWeekDays = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating weekdays",
-      success: true,
+      success: false,
       err: err,
     });
   }
@@ -95,7 +204,7 @@ exports.createWeekDays = async (req, res) => {
 exports.createSlots = async (req, res) => {
   try {
     const interval = parseInt(req.query.interval, 10);
-    const hospitalId = req.query.hospitalId;
+    const { id, hospitalId } = req.user;
 
     if (!interval || interval <= 0) {
       return res.status(400).json({ error: "Invalid interval" });
@@ -163,7 +272,7 @@ exports.createSlots = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating slots",
-      success: true,
+      success: false,
       err: err,
     });
   }
@@ -196,7 +305,7 @@ exports.createDoctorsSlot = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating doctor slots",
-      success: true,
+      success: false,
       err: err,
     });
   }
@@ -205,8 +314,12 @@ exports.createDoctorsSlot = async (req, res) => {
 exports.createAilment = async (req, res) => {
   try {
     let ailmentDetails = req.body;
+    let { hospitalId } = req.user;
     let result = await prisma.ailment.create({
-      data: ailmentDetails,
+      data: {
+        hospitalId,
+        ...ailmentDetails,
+      },
     });
     res.status(httpStatus.OK).send({
       message: "Ailment created successfully",
@@ -217,17 +330,94 @@ exports.createAilment = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating ailment",
-      success: true,
+      success: false,
       err: err,
     });
   }
 };
 
+exports.getAlimentList = async (req, res) => {
+  try {
+    let { hospitalId } = req.user;
+    let result = await prisma.ailment.findMany({
+      where: {
+        hospitalId: hospitalId,
+        isActive: true,
+        isDeleted: false,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Ailment list fetched successfully",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching ailment list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updateAilment = async (req, res) => {
+  try {
+    let ailmentDetails = req.body;
+    console.log("updatealiment", ailmentDetails);
+    const ailmentId = req.params.ailmentId;
+    let result = await prisma.ailment.update({
+      where: {
+        id: ailmentId,
+      },
+      data: ailmentDetails,
+    });
+    res.status(httpStatus.OK).send({
+      message: "Ailment updated successfully",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error updating ailment",
+      success: false,
+      err: err,
+    });
+  }
+};
+exports.deleteAilment = async (req, res) => {
+  try {
+    const ailmentId = req.params.ailmentId;
+    await prisma.ailment.update({
+      where: {
+        id: ailmentId,
+      },
+      data: {
+        isActive: false,
+        isDeleted: true,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Decease deleted",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error deleting ailment",
+      success: true,
+      err: err,
+    });
+  }
+};
 exports.createdocumentType = async (req, res) => {
   try {
     let docTypeDetails = req.body;
+    const { hospitalId } = req.user;
     let result = await prisma.documentTypes.create({
-      data: docTypeDetails,
+      data: { hospitalId, ...docTypeDetails },
     });
     res.status(httpStatus.OK).send({
       message: "Document type created",
@@ -237,8 +427,8 @@ exports.createdocumentType = async (req, res) => {
   } catch (err) {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: "error creating document type",
-      success: true,
+      message: "Error creating document type",
+      success: false,
       err: err,
     });
   }
@@ -341,7 +531,7 @@ exports.updateAppointmentStatus = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error updating appointment status",
-      success: true,
+      success: false,
       err: err,
     });
   }
@@ -349,10 +539,10 @@ exports.updateAppointmentStatus = async (req, res) => {
 
 exports.createMedication = async (req, res) => {
   try {
-    let medicationDetails = req.body;
-
-    let response = await prisma.medicationStocks.create({
-      data: medicationDetails,
+    const medicationDetails = req.body;
+    const { hospitalId } = req.user;
+    const response = await prisma.medicationStocks.create({
+      data: { hospitalId, ...medicationDetails },
     });
 
     res.status(httpStatus.OK).send({
@@ -363,8 +553,85 @@ exports.createMedication = async (req, res) => {
   } catch (err) {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: "error creating medication",
+      message: "Error creating medication",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getMedicationList = async (req, res) => {
+  try {
+    const { hospitalId } = req.user;
+    const response = await prisma.medicationStocks.findMany({
+      where: {
+        hospitalId: hospitalId,
+        isActive: true,
+        isDeleted: false,
+      },
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "Medication list fetched",
       success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching medication list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updateMedicationDetails = async (req, res) => {
+  try {
+    const medicationDetails = req.body;
+    const medicationId = req.params.medicationId;
+    const response = await prisma.medicationStocks.update({
+      where: {
+        id: medicationId,
+      },
+      data: { ...medicationDetails },
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "Medication details updated",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error updating medication details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.deleteMedication = async (req, res) => {
+  try {
+    const medicationId = req.params.medicationId;
+    await prisma.medicationStocks.update({
+      where: {
+        id: medicationId,
+      },
+      data: { isActive: false, isDeleted: true },
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "Medication deleted",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error deleting medication",
+      success: false,
       err: err,
     });
   }
