@@ -51,6 +51,7 @@ enum dosageFormEnum {
   Elixirs
   Tinctures
   Liniments
+  Others
 }
 
 model hospitals {
@@ -195,6 +196,8 @@ model patients {
   state                  String?
   pincode                String?
   country                String?
+  isActive               Boolean                  @default(true)
+  isDeleted              Boolean                  @default(false)
   appointments           appointments[]
   patientPrescription    patientPrescription[]
   patientAppointmentDocs patientAppointmentDocs[]

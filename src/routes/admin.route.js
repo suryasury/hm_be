@@ -55,6 +55,16 @@ router.post(
   verifyAdminAccessToken,
   adminController.createdocumentType,
 );
+router.get(
+  "/hospital/appointment/list",
+  verifyAdminAccessToken,
+  adminController.getAppointmentList,
+);
+router.get(
+  "/hospital/appointment/details/:appointmentId",
+  verifyAdminAccessToken,
+  adminController.getAppointmentDetails,
+);
 router.post(
   "/hospital/appointment/update/status",
   verifyAdminAccessToken,
@@ -79,6 +89,11 @@ router.delete(
   "/hospital/medication/delete/:medicationId",
   verifyAdminAccessToken,
   adminController.deleteMedication,
+);
+router.get(
+  "/hospital/patients/list",
+  verifyAdminAccessToken,
+  adminController.getPatientList,
 );
 
 module.exports = router;

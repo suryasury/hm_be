@@ -4,6 +4,7 @@ const { convertToDateTime } = require("../helpers/timePeriod");
 const validatePassword = require("../helpers/validatePassword");
 const generateAccesToken = require("../helpers/generateAccessToken");
 const hashPassword = require("../helpers/hashPassword");
+const { getPreSignedUrl } = require("./common.controller");
 const prisma = new PrismaClient();
 
 exports.login = async (req, res) => {
@@ -338,18 +339,49 @@ exports.createAilment = async (req, res) => {
 
 exports.getAlimentList = async (req, res) => {
   try {
-    let { hospitalId } = req.user;
-    let result = await prisma.ailment.findMany({
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const skip = limit * (page - 1);
+    const { hospitalId } = req.user;
+    const [ailmentList, count] = await prisma.$transaction([
+      prisma.ailment.findMany({
+        orderBy: {
+          isDefault: "asc",
+        },
+        where: {
+          hospitalId: hospitalId,
+          isActive: true,
+          isDeleted: false,
+        },
+        take: limit,
+        skip,
+      }),
+      prisma.ailment.count({
+        where: {
+          hospitalId: hospitalId,
+          isActive: true,
+          isDeleted: false,
+        },
+      }),
+    ]);
+    await prisma.ailment.findMany({
       where: {
         hospitalId: hospitalId,
         isActive: true,
         isDeleted: false,
       },
+      take: limit,
+      skip,
     });
     res.status(httpStatus.OK).send({
       message: "Ailment list fetched successfully",
       success: true,
-      data: result,
+      data: {
+        ailmentList,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
     });
   } catch (err) {
     console.log("err", err);
@@ -563,18 +595,37 @@ exports.createMedication = async (req, res) => {
 exports.getMedicationList = async (req, res) => {
   try {
     const { hospitalId } = req.user;
-    const response = await prisma.medicationStocks.findMany({
-      where: {
-        hospitalId: hospitalId,
-        isActive: true,
-        isDeleted: false,
-      },
-    });
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const skip = limit * (page - 1);
+    const [medicationList, count] = await prisma.$transaction([
+      prisma.medicationStocks.findMany({
+        where: {
+          hospitalId: hospitalId,
+          isActive: true,
+          isDeleted: false,
+        },
+        take: limit,
+        skip,
+      }),
+      prisma.medicationStocks.count({
+        where: {
+          hospitalId: hospitalId,
+          isActive: true,
+          isDeleted: false,
+        },
+      }),
+    ]);
 
     res.status(httpStatus.OK).send({
       message: "Medication list fetched",
       success: true,
-      data: response,
+      data: {
+        medicationList: medicationList,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
     });
   } catch (err) {
     console.log("err", err);
@@ -631,6 +682,251 @@ exports.deleteMedication = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error deleting medication",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getPatientList = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const skip = limit * (page - 1);
+    const { hospitalId } = req.user;
+
+    const [patientList, count] = await prisma.$transaction([
+      prisma.hospitalPatients.findMany({
+        skip,
+        take: limit,
+        where: {
+          hospitalId: hospitalId,
+        },
+        include: {
+          patient: {
+            select: {
+              name: 1,
+              id: 1,
+              phoneNumber: 1,
+              gender: 1,
+              dateOfBirth: 1,
+              bloodGroup: 1,
+              isd_code: 1,
+              email: 1,
+            },
+          },
+        },
+      }),
+      prisma.hospitalPatients.count({
+        where: {
+          hospitalId: hospitalId,
+        },
+      }),
+    ]);
+    res.status(httpStatus.OK).send({
+      message: "Patient list fetched",
+      success: true,
+      data: {
+        patientList,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching patient list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getAppointmentList = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const skip = limit * (page - 1);
+    const { hospitalId } = req.user;
+    const appointmentStatus = req.query.appointmentStatus;
+    let whereClause = {
+      hospitalId,
+    };
+    if (appointmentStatus) {
+      whereClause.appointmentStatus = appointmentStatus;
+    }
+
+    const [patientList, count] = await prisma.$transaction([
+      prisma.appointments.findMany({
+        orderBy: [
+          {
+            appointmentDate: "asc",
+          },
+        ],
+        skip,
+        take: limit,
+        where: whereClause,
+        select: {
+          id: true,
+          appointmentDate: true,
+          appointmentStatus: true,
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              speciality: true,
+              profilePictureUrl: true,
+            },
+          },
+          patient: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phoneNumber: true,
+              isd_code: true,
+            },
+          },
+          ailment: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          doctorSlots: {
+            select: {
+              doctorId: true,
+              weekDaysId: true,
+              id: true,
+              slot: {
+                select: {
+                  id: true,
+                  startTime: true,
+                  endTime: true,
+                  hospitalId: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.appointments.count({
+        where: whereClause,
+      }),
+    ]);
+    res.status(httpStatus.OK).send({
+      message: "Patient list fetched",
+      success: true,
+      data: {
+        patientList,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching patient list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getAppointmentDetails = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+
+    const appointmentDetails = await prisma.appointments.findUnique({
+      where: {
+        id: appointmentId,
+      },
+      select: {
+        id: true,
+        appointmentDate: true,
+        appointmentStatus: true,
+        hospitalId: true,
+        patientAppointmentDocs: {
+          select: {
+            id: true,
+            bucketPath: true,
+            documentName: true,
+            fileExtension: true,
+            fileName: true,
+            documentTypes: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            speciality: true,
+            profilePictureUrl: true,
+          },
+        },
+        patient: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNumber: true,
+            isd_code: true,
+            bloodGroup: true,
+          },
+        },
+        ailment: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        doctorSlots: {
+          select: {
+            dayOfWeek: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            id: true,
+            slot: {
+              select: {
+                id: true,
+                startTime: true,
+                endTime: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (appointmentDetails.patientAppointmentDocs.length > 0) {
+      appointmentDetails.patientAppointmentDocs = await Promise.all(
+        appointmentDetails.patientAppointmentDocs.map(async (doc) => {
+          const signedUrl = await getPreSignedUrl(doc.bucketPath);
+          return {
+            ...doc,
+            signedUrl: signedUrl,
+          };
+        }),
+      );
+    }
+    res.status(httpStatus.OK).send({
+      message: "Appointment details fetched",
+      success: true,
+      data: appointmentDetails,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching Appointment details",
       success: false,
       err: err,
     });
