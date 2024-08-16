@@ -5,6 +5,12 @@ const adminController = require("../controllers").adminController;
 
 router.post("/login", adminController.login);
 router.post("/signup", adminController.signUp);
+router.get("/details", verifyAdminAccessToken, adminController.getAdminDetails);
+router.get(
+  "/patient/details/:patientId",
+  verifyAdminAccessToken,
+  adminController.getPatientDetails,
+);
 router.post(
   "/hospital/create",
   // verifyAdminAccessToken,

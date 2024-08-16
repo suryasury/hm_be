@@ -932,3 +932,54 @@ exports.getAppointmentDetails = async (req, res) => {
     });
   }
 };
+exports.getAdminDetails = async (req, res) => {
+  try {
+    const userDetails = req.user;
+    if (userDetails.profilePictureUrl) {
+      let signedUrl = await getPreSignedUrl(userDetails.profilePictureUrl);
+      userDetails.signedUrl = signedUrl;
+    }
+
+    res.status(httpStatus.OK).send({
+      message: "User details fetched",
+      success: true,
+      data: userDetails,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching user details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getPatientDetails = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    let patientDetails = await prisma.patients.findUnique({
+      where: {
+        id: patientId,
+      },
+    });
+    if (patientDetails.profilePictureUrl) {
+      let signedUrl = await getPreSignedUrl(patientDetails.profilePictureUrl);
+      patientDetails.signedUrl = signedUrl;
+    }
+
+    res.status(httpStatus.OK).send({
+      message: "Patient details fetched",
+      success: true,
+      data: patientDetails,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching patient details",
+      success: false,
+      err: err,
+    });
+  }
+};
