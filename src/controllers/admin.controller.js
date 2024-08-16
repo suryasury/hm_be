@@ -341,27 +341,33 @@ exports.getAlimentList = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit || 10);
     const page = parseInt(req.query.page || 1);
+    const searchQuery = req.query.search || "";
     const skip = limit * (page - 1);
     const { hospitalId } = req.user;
+    let whereClause = {
+      hospitalId: hospitalId,
+      isActive: true,
+      isDeleted: false,
+    };
+    if (searchQuery) {
+      // whereClause.name = {
+      //   search: "*" + searchQuery + "*",
+      // };
+      whereClause.name = {
+        contains: searchQuery,
+      };
+    }
     const [ailmentList, count] = await prisma.$transaction([
       prisma.ailment.findMany({
         orderBy: {
           isDefault: "asc",
         },
-        where: {
-          hospitalId: hospitalId,
-          isActive: true,
-          isDeleted: false,
-        },
+        where: whereClause,
         take: limit,
         skip,
       }),
       prisma.ailment.count({
-        where: {
-          hospitalId: hospitalId,
-          isActive: true,
-          isDeleted: false,
-        },
+        where: whereClause,
       }),
     ]);
     await prisma.ailment.findMany({
@@ -597,23 +603,40 @@ exports.getMedicationList = async (req, res) => {
     const { hospitalId } = req.user;
     const limit = parseInt(req.query.limit || 10);
     const page = parseInt(req.query.page || 1);
+    const searchQuery = req.query.search || "";
     const skip = limit * (page - 1);
+    let whereClause = {
+      hospitalId: hospitalId,
+      isActive: true,
+      isDeleted: false,
+    };
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          medicationName: {
+            contains: searchQuery,
+          },
+        },
+        {
+          code: {
+            contains: searchQuery,
+          },
+        },
+        {
+          manufacturer: {
+            contains: searchQuery,
+          },
+        },
+      ];
+    }
     const [medicationList, count] = await prisma.$transaction([
       prisma.medicationStocks.findMany({
-        where: {
-          hospitalId: hospitalId,
-          isActive: true,
-          isDeleted: false,
-        },
+        where: whereClause,
         take: limit,
         skip,
       }),
       prisma.medicationStocks.count({
-        where: {
-          hospitalId: hospitalId,
-          isActive: true,
-          isDeleted: false,
-        },
+        where: whereClause,
       }),
     ]);
 
@@ -692,16 +715,44 @@ exports.getPatientList = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit || 10);
     const page = parseInt(req.query.page || 1);
+    const searchQuery = req.query.search;
     const skip = limit * (page - 1);
     const { hospitalId } = req.user;
+    let whereClause = {
+      hospitalId: hospitalId,
+    };
+
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          patient: {
+            name: {
+              contains: searchQuery,
+            },
+          },
+        },
+        {
+          patient: {
+            phoneNumber: {
+              contains: searchQuery,
+            },
+          },
+        },
+        {
+          patient: {
+            email: {
+              contains: searchQuery,
+            },
+          },
+        },
+      ];
+    }
 
     const [patientList, count] = await prisma.$transaction([
       prisma.hospitalPatients.findMany({
         skip,
         take: limit,
-        where: {
-          hospitalId: hospitalId,
-        },
+        where: whereClause,
         include: {
           patient: {
             select: {
@@ -718,9 +769,7 @@ exports.getPatientList = async (req, res) => {
         },
       }),
       prisma.hospitalPatients.count({
-        where: {
-          hospitalId: hospitalId,
-        },
+        where: whereClause,
       }),
     ]);
     res.status(httpStatus.OK).send({
@@ -749,12 +798,39 @@ exports.getAppointmentList = async (req, res) => {
     const page = parseInt(req.query.page || 1);
     const skip = limit * (page - 1);
     const { hospitalId } = req.user;
+    const searchQuery = req.query.search;
     const appointmentStatus = req.query.appointmentStatus;
     let whereClause = {
       hospitalId,
     };
     if (appointmentStatus) {
       whereClause.appointmentStatus = appointmentStatus;
+    }
+
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          patient: {
+            name: {
+              contains: searchQuery,
+            },
+          },
+        },
+        {
+          doctor: {
+            name: {
+              contains: searchQuery,
+            },
+          },
+        },
+        {
+          patient: {
+            phoneNumber: {
+              contains: searchQuery,
+            },
+          },
+        },
+      ];
     }
 
     const [patientList, count] = await prisma.$transaction([

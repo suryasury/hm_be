@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 datasource db {
@@ -349,6 +350,8 @@ model ailment {
   hospitalId   String
   appointments appointments[]
   hopital      hospitals      @relation(fields: [hospitalId], references: [id])
+
+  @@fulltext([name])
 }
 
 model documentTypes {
