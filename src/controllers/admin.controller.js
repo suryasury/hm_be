@@ -797,6 +797,7 @@ exports.getAppointmentList = async (req, res) => {
     const limit = parseInt(req.query.limit || 10);
     const page = parseInt(req.query.page || 1);
     const skip = limit * (page - 1);
+    const patientId = req.query.patientId;
     const { hospitalId } = req.user;
     const searchQuery = req.query.search;
     const appointmentStatus = req.query.appointmentStatus;
@@ -831,6 +832,12 @@ exports.getAppointmentList = async (req, res) => {
           },
         },
       ];
+    }
+
+    if (patientId) {
+      whereClause.patient = {
+        id: patientId,
+      };
     }
 
     const [patientList, count] = await prisma.$transaction([
@@ -892,7 +899,7 @@ exports.getAppointmentList = async (req, res) => {
       }),
     ]);
     res.status(httpStatus.OK).send({
-      message: "Patient list fetched",
+      message: "Appointment list fetched",
       success: true,
       data: {
         patientList,
@@ -904,7 +911,7 @@ exports.getAppointmentList = async (req, res) => {
   } catch (err) {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: "Error fetching patient list",
+      message: "Error fetching appointment list",
       success: false,
       err: err,
     });
