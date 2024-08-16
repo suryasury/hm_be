@@ -1,6 +1,9 @@
 const httpStatus = require("http-status");
 const { PrismaClient } = require("@prisma/client");
-const { convertToDateTime } = require("../helpers/timePeriod");
+const {
+  convertToDateTime,
+  getStartAndEndOfDay,
+} = require("../helpers/timePeriod");
 const validatePassword = require("../helpers/validatePassword");
 const generateAccesToken = require("../helpers/generateAccessToken");
 const hashPassword = require("../helpers/hashPassword");
@@ -840,7 +843,7 @@ exports.getAppointmentList = async (req, res) => {
       };
     }
 
-    const [patientList, count] = await prisma.$transaction([
+    const [appointmentList, count] = await prisma.$transaction([
       prisma.appointments.findMany({
         orderBy: [
           {
@@ -902,7 +905,7 @@ exports.getAppointmentList = async (req, res) => {
       message: "Appointment list fetched",
       success: true,
       data: {
-        patientList,
+        appointmentList,
         meta: {
           totalMatchingRecords: count,
         },
@@ -1061,6 +1064,114 @@ exports.getPatientDetails = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error fetching patient details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getDashboardOverview = async (req, res) => {
+  try {
+    const { hospitalId } = req.user;
+    let [totalAppointments, totalDoctors, totalPatients, activeAppointments] =
+      await prisma.$transaction([
+        prisma.appointments.count({
+          where: {
+            hospitalId: hospitalId,
+          },
+        }),
+        prisma.users.count({
+          where: {
+            role: "DOCTOR",
+            hospitalId,
+          },
+        }),
+        prisma.hospitalPatients.count({
+          where: {
+            hospitalId,
+          },
+        }),
+        prisma.appointments.count({
+          where: {
+            appointmentStatus: "SCHEDULED",
+            hospitalId,
+          },
+        }),
+      ]);
+
+    res.status(httpStatus.OK).send({
+      message: "Dashboard overview",
+      success: true,
+      data: {
+        totalAppointments,
+        totalDoctors,
+        totalPatients,
+        activeAppointments,
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching dashboard overview",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getDashboardOverviewToday = async (req, res) => {
+  try {
+    const { hospitalId } = req.user;
+    const { startDate, endDate } = getStartAndEndOfDay(new Date());
+    let [
+      todaysAppointment,
+      todaysPendingAppointment,
+      todaysCancelledAppointments,
+    ] = await prisma.$transaction([
+      prisma.appointments.count({
+        where: {
+          hospitalId: hospitalId,
+          appointmentDate: {
+            gte: startDate,
+            lt: endDate,
+          },
+        },
+      }),
+      prisma.appointments.count({
+        where: {
+          appointmentStatus: "SCHEDULED",
+          hospitalId,
+          appointmentDate: {
+            gte: startDate,
+            lt: endDate,
+          },
+        },
+      }),
+      prisma.appointments.count({
+        where: {
+          appointmentStatus: "CANCELLED",
+          hospitalId,
+          appointmentDate: {
+            gte: startDate,
+            lt: endDate,
+          },
+        },
+      }),
+    ]);
+
+    res.status(httpStatus.OK).send({
+      message: "Dashboard overview today metrics",
+      success: true,
+      data: {
+        todaysAppointment,
+        todaysPendingAppointment,
+        todaysCancelledAppointments,
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching dashboard overview todays metrics",
       success: false,
       err: err,
     });

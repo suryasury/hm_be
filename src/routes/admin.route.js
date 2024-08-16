@@ -101,5 +101,14 @@ router.get(
   verifyAdminAccessToken,
   adminController.getPatientList,
 );
-
+router.get(
+  "/dashboard/overview/metrics",
+  verifyAdminAccessToken,
+  adminController.getDashboardOverview,
+);
+router.get(
+  "/dashboard/overview/metrics/today",
+  verifyAdminAccessToken,
+  adminController.getDashboardOverviewToday,
+);
 module.exports = router;
