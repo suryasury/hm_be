@@ -3,7 +3,7 @@ const verifyAdminAccessToken = require("../middlewares/verifyAdminAccessToken");
 const router = express.Router();
 const adminController = require("../controllers").adminController;
 
-router.get("/login", adminController.login);
+router.post("/login", adminController.login);
 router.post("/signup", adminController.signUp);
 router.post(
   "/hospital/create",
