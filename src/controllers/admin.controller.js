@@ -1177,3 +1177,98 @@ exports.getDashboardOverviewToday = async (req, res) => {
     });
   }
 };
+
+exports.getFeedbackList = async (req, res) => {
+  try {
+    let { hospitalId } = req.user;
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const skip = limit * (page - 1);
+    let whereClause = {
+      hospitalId,
+      isDeleted: false,
+    };
+    let [feedbackList, count] = await prisma.$transaction([
+      prisma.appointmentFeedbacks.findMany({
+        where: whereClause,
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+        select: {
+          id: 1,
+          overallSatisfaction: true,
+          feedBackRemarks: true,
+          appointment: {
+            select: {
+              id: true,
+              appointmentStatus: true,
+              appointmentDate: true,
+              ailment: true,
+              doctor: {
+                select: {
+                  id: true,
+                  name: true,
+                  speciality: true,
+                  profilePictureUrl: true,
+                  address: true,
+                  phoneNumber: true,
+                  isd_code: true,
+                },
+              },
+              doctorSlots: {
+                select: {
+                  id: true,
+                  doctorId: true,
+                  weekDaysId: true,
+                  slot: {
+                    select: {
+                      id: true,
+                      startTime: true,
+                      endTime: true,
+                      hospitalId: true,
+                    },
+                  },
+                },
+              },
+              patient: {
+                select: {
+                  name: 1,
+                  id: 1,
+                  phoneNumber: 1,
+                  isd_code: 1,
+                  gender: 1,
+                  dateOfBirth: 1,
+                  bloodGroup: 1,
+                  email: 1,
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.appointmentFeedbacks.count({
+        where: whereClause,
+      }),
+    ]);
+
+    res.status(httpStatus.OK).send({
+      message: "Feedback list fetched",
+      success: true,
+      data: {
+        feedbackList,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching feedback list",
+      success: false,
+      err: err,
+    });
+  }
+};

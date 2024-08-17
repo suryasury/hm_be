@@ -16,6 +16,11 @@ router.post(
   // verifyAdminAccessToken,
   adminController.createHospitals,
 );
+router.get(
+  "/feedback/list",
+  verifyAdminAccessToken,
+  adminController.getFeedbackList,
+);
 router.post(
   "/hospital/doctor/create",
   verifyAdminAccessToken,
