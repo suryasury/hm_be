@@ -1181,6 +1181,7 @@ exports.getDashboardOverviewToday = async (req, res) => {
 exports.getFeedbackList = async (req, res) => {
   try {
     let { hospitalId } = req.user;
+    const searchQuery = req.query.search;
     const limit = parseInt(req.query.limit || 10);
     const page = parseInt(req.query.page || 1);
     const skip = limit * (page - 1);
@@ -1188,6 +1189,26 @@ exports.getFeedbackList = async (req, res) => {
       hospitalId,
       isDeleted: false,
     };
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          appointment: {
+            doctor: {
+              name: {
+                contains: searchQuery,
+              },
+            },
+          },
+        },
+        {
+          patient: {
+            name: {
+              contains: searchQuery,
+            },
+          },
+        },
+      ];
+    }
     let [feedbackList, count] = await prisma.$transaction([
       prisma.appointmentFeedbacks.findMany({
         where: whereClause,
