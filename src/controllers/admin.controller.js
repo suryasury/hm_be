@@ -478,8 +478,8 @@ exports.createdocumentType = async (req, res) => {
 exports.updateAppointmentStatus = async (req, res) => {
   try {
     let appointmentId = req.body.appointmentId;
-    let prescriptions = req.body.prescriptions;
-    let doctorRemarks = req.body.doctorRemarks;
+    let prescriptions = req.body.prescriptions || [];
+    let doctorRemarks = req.body.doctorRemarks || "";
     let status = req.body.status;
 
     function addDays(date, days) {
@@ -934,6 +934,37 @@ exports.getAppointmentDetails = async (req, res) => {
         appointmentDate: true,
         appointmentStatus: true,
         hospitalId: true,
+        patientPrescription: {
+          select: {
+            id: true,
+            durationInDays: true,
+            foodRelation: true,
+            prescriptionDays: {
+              select: {
+                id: true,
+                prescriptionDate: true,
+                patientPrescription: true,
+                prescriptionTimeOfDay: {
+                  select: {
+                    id: true,
+                    timeOfDay: true,
+                  },
+                },
+              },
+            },
+            medicationStock: {
+              select: {
+                medicationName: true,
+                medicationDosage: true,
+                id: true,
+                code: true,
+                manufacturer: true,
+                description: true,
+                dosageForm: true,
+              },
+            },
+          },
+        },
         patientAppointmentDocs: {
           select: {
             id: true,
@@ -1002,6 +1033,26 @@ exports.getAppointmentDetails = async (req, res) => {
             signedUrl: signedUrl,
           };
         }),
+      );
+    }
+    if (appointmentDetails.patientPrescription.length > 0) {
+      let patientPrescription = appointmentDetails.patientPrescription;
+      appointmentDetails.patientPrescription = patientPrescription.map(
+        (prescription) => {
+          let timeOfDay = {};
+          for (let prescriptionDays of prescription.prescriptionDays) {
+            for (let pTimeOfDay of prescriptionDays.prescriptionTimeOfDay) {
+              if (!timeOfDay[pTimeOfDay.timeOfDay]) {
+                timeOfDay[pTimeOfDay.timeOfDay] = pTimeOfDay.timeOfDay;
+              }
+            }
+          }
+          delete prescription.prescriptionDays;
+          return {
+            ...prescription,
+            timeOfDay: Object.keys(timeOfDay),
+          };
+        },
       );
     }
     res.status(httpStatus.OK).send({
