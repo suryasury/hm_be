@@ -19,6 +19,7 @@ app.use(
       "http://localhost:5174",
       "http://localhost:4173",
       "https://dev-patient.tech42.in",
+      "https://dev-admin.tech42.in",
     ],
   }),
 );
