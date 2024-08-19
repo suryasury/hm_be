@@ -934,6 +934,8 @@ exports.getAppointmentDetails = async (req, res) => {
         appointmentDate: true,
         appointmentStatus: true,
         hospitalId: true,
+        remarks: true,
+        doctorRemarks: true,
         patientPrescription: {
           select: {
             id: true,
