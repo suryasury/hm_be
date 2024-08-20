@@ -123,7 +123,13 @@ model users {
   password          String
   profilePictureUrl String?
   speciality        String?
-  address           String?
+  houseNumber       String?
+  address1          String?
+  address2          String?
+  city              String?
+  state             String?
+  pincode           String?
+  country           String?
   phoneNumber       String
   isd_code          String
   role              roles
@@ -164,7 +170,7 @@ model doctorSlots {
   updatedAt                  DateTime       @updatedAt
   slotId                     String
   weekDaysId                 String
-  isDoctorAvailableForTheDay Boolean        @default(false)
+  isDoctorAvailableForTheDay Boolean        @default(true)
   slotLimit                  Int            @default(0)
   isEnabled                  Boolean        @default(true)
   isActive                   Boolean        @default(true)

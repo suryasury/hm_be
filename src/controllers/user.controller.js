@@ -348,7 +348,9 @@ exports.getAppointmentList = async (req, res) => {
     let { id } = req.user;
     let appointmentList = await prisma.appointments.findMany({
       where: {
-        appointmentStatus: "SCHEDULED",
+        appointmentStatus: {
+          in: ["APPROVED", "SCHEDULED", "PENDING"],
+        },
         patientId: id,
       },
       include: {
@@ -395,7 +397,7 @@ exports.getAppointmentHistoryList = async (req, res) => {
     let { id } = req.user;
     let appointmentList = await prisma.appointments.findMany({
       where: {
-        appointmentStatus: { not: "SCHEDULED" },
+        appointmentStatus: { in: ["COMPLETED", "CANCELLED"] },
         patientId: id,
       },
       include: {

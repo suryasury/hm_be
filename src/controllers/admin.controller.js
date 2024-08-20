@@ -3,6 +3,7 @@ const { PrismaClient } = require("@prisma/client");
 const {
   convertToDateTime,
   getStartAndEndOfDay,
+  determineTimePeriod,
 } = require("../helpers/timePeriod");
 const validatePassword = require("../helpers/validatePassword");
 const generateAccesToken = require("../helpers/generateAccessToken");
@@ -143,9 +144,36 @@ exports.createHospitals = async (req, res) => {
 
 exports.createDoctors = async (req, res) => {
   try {
-    let doctorDetails = req.body;
+    const doctorDetails = req.body;
+    const { hospitalId } = req.user;
+    const hashedPassword = hashPassword("Password@123");
+    const isUserExist = await prisma.users.findFirst({
+      where: {
+        role: "DOCTOR",
+        OR: [
+          {
+            email: doctorDetails.email,
+          },
+          {
+            phoneNumber: doctorDetails.phoneNumber,
+          },
+        ],
+      },
+    });
+    if (isUserExist) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "Doctor already exists with given mobile number or email",
+        success: true,
+        data: {},
+      });
+    }
     let result = await prisma.users.create({
-      data: doctorDetails,
+      data: {
+        hospitalId: hospitalId,
+        isAdmin: false,
+        password: hashedPassword,
+        ...doctorDetails,
+      },
     });
     res.status(httpStatus.OK).send({
       message: "Doctor created successfully",
@@ -162,6 +190,325 @@ exports.createDoctors = async (req, res) => {
   }
 };
 
+exports.createAdmin = async (req, res) => {
+  try {
+    const adminDetails = req.body;
+    const { hospitalId } = req.user;
+    const hashedPassword = hashPassword("Password@123");
+    const isUserExist = await prisma.users.findFirst({
+      where: {
+        role: "ADMIN",
+        OR: [
+          {
+            email: adminDetails.email,
+          },
+          {
+            phoneNumber: adminDetails.phoneNumber,
+          },
+        ],
+      },
+    });
+    if (isUserExist) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "User already exists with given mobile number or email",
+        success: true,
+        data: {},
+      });
+    }
+    const result = await prisma.users.create({
+      data: {
+        hospitalId: hospitalId,
+        isAdmin: true,
+        password: hashedPassword,
+        ...adminDetails,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "User created successfully",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error creating users",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getAdminList = async (req, res) => {
+  try {
+    const { hospitalId } = req.user;
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const searchQuery = req.query.search || "";
+    const skip = limit * (page - 1);
+    let whereClause = {
+      hospitalId: hospitalId,
+      isAdmin: true,
+      isActive: true,
+      isDeleted: false,
+    };
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          name: {
+            contains: searchQuery,
+          },
+        },
+        {
+          email: {
+            contains: searchQuery,
+          },
+        },
+        {
+          phoneNumber: {
+            contains: searchQuery,
+          },
+        },
+      ];
+    }
+    const [result, count] = await prisma.$transaction([
+      prisma.users.findMany({
+        where: whereClause,
+        select: {
+          id: 1,
+          name: 1,
+          email: 1,
+          phoneNumber: 1,
+          isd_code: 1,
+          isAdmin: 1,
+          role: 1,
+          createdAt: 1,
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.users.count({
+        where: whereClause,
+      }),
+    ]);
+
+    res.status(httpStatus.OK).send({
+      message: "User list fetched",
+      success: true,
+      data: {
+        userList: result,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching users list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getDoctorsList = async (req, res) => {
+  try {
+    const { hospitalId } = req.user;
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const searchQuery = req.query.search || "";
+    const skip = limit * (page - 1);
+    let whereClause = {
+      hospitalId: hospitalId,
+      isAdmin: false,
+      role: "DOCTOR",
+      isActive: true,
+      isDeleted: false,
+    };
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          name: {
+            contains: searchQuery,
+          },
+        },
+        {
+          email: {
+            contains: searchQuery,
+          },
+        },
+        {
+          phoneNumber: {
+            contains: searchQuery,
+          },
+        },
+      ];
+    }
+    const [result, count] = await prisma.$transaction([
+      prisma.users.findMany({
+        where: whereClause,
+        select: {
+          id: 1,
+          name: 1,
+          email: 1,
+          phoneNumber: 1,
+          isd_code: 1,
+          isAdmin: 1,
+          role: 1,
+          createdAt: 1,
+          speciality: 1,
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.users.count({
+        where: whereClause,
+      }),
+    ]);
+
+    res.status(httpStatus.OK).send({
+      message: "Doctor list fetched",
+      success: true,
+      data: {
+        doctorList: result,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching doctor list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updateAdminDetails = async (req, res) => {
+  try {
+    const adminDetails = req.body;
+    const { userId } = req.params;
+    const isUserExist = await prisma.users.findFirst({
+      where: {
+        role: "ADMIN",
+        OR: [
+          {
+            email: adminDetails.email,
+          },
+          {
+            phoneNumber: adminDetails.phoneNumber,
+          },
+        ],
+      },
+    });
+    if (
+      isUserExist &&
+      adminDetails.email &&
+      isUserExist.email === adminDetails.email
+    ) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "User already exists with given email",
+        success: true,
+        data: {},
+      });
+    }
+    if (
+      isUserExist &&
+      adminDetails.phoneNumber &&
+      isUserExist.phoneNumber === adminDetails.phoneNumber
+    ) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "User already exists with given phone number",
+        success: true,
+        data: {},
+      });
+    }
+    await prisma.users.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        ...adminDetails,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "User details updated successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error updating user details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updateDoctorDetails = async (req, res) => {
+  try {
+    const doctorDetails = req.body;
+    const { doctorId } = req.params;
+    const isUserExist = await prisma.users.findFirst({
+      where: {
+        role: "DOCTOR",
+        OR: [
+          {
+            email: doctorDetails.email,
+          },
+          {
+            phoneNumber: doctorDetails.phoneNumber,
+          },
+        ],
+      },
+    });
+    if (
+      isUserExist &&
+      doctorDetails.email &&
+      isUserExist.email === doctorDetails.email
+    ) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "Doctor already exists with given email",
+        success: true,
+        data: {},
+      });
+    }
+    if (
+      isUserExist &&
+      doctorDetails.phoneNumber &&
+      isUserExist.phoneNumber === doctorDetails.phoneNumber
+    ) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "Doctor already exists with given phone number",
+        success: true,
+        data: {},
+      });
+    }
+    await prisma.users.update({
+      where: {
+        id: doctorId,
+      },
+      data: {
+        ...doctorDetails,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Doctor details updated successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error updating doctor details",
+      success: false,
+      err: err,
+    });
+  }
+};
 exports.createWeekDays = async (req, res) => {
   try {
     // let doctorDetails = req.body;
@@ -199,6 +546,26 @@ exports.createWeekDays = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating weekdays",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getWeekDaysList = async (req, res) => {
+  try {
+    let result = await prisma.weekdays.findMany({});
+    res.status(httpStatus.OK).send({
+      message: "weekdays list fetched successfully",
+      success: true,
+      data: {
+        weekDayList: result,
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching weekdays list",
       success: false,
       err: err,
     });
@@ -276,6 +643,85 @@ exports.createSlots = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating slots",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getSlotList = async (req, res) => {
+  try {
+    const { doctorId, weekDayId } = req.query;
+    const { hospitalId } = req.user;
+    let selectClause = {
+      startTime: true,
+      endTime: true,
+      id: true,
+    };
+    if (doctorId) {
+      selectClause.doctorSlots = {
+        where: {
+          doctorId: doctorId,
+          weekDaysId: weekDayId,
+        },
+      };
+    }
+    let slotList = await prisma.slots.findMany({
+      where: {
+        hospitalId: hospitalId,
+      },
+      select: selectClause,
+    });
+
+    let isDoctorAvailableForTheDay = false;
+    let morningSlots = [];
+    let afternoonSlots = [];
+    let eveningSlots = [];
+    slotList = slotList.map((slot) => {
+      if (slot.doctorSlots && slot.doctorSlots.length > 0) {
+        let slotDetails = slot.doctorSlots[0];
+        isDoctorAvailableForTheDay = slotDetails.isDoctorAvailableForTheDay;
+        const doctorSlotId = slotDetails.id;
+        delete slot.doctorSlots;
+        return {
+          ...slot,
+          doctorSlotId,
+          isSlotSelected: true,
+        };
+      }
+      delete slot.doctorSlots;
+      return {
+        ...slot,
+        isSlotSelected: false,
+      };
+    });
+
+    slotList.map((slot) => {
+      if (determineTimePeriod(slot.startTime) === "morning") {
+        morningSlots.push(slot);
+      } else if (determineTimePeriod(slot.startTime) === "afternoon") {
+        afternoonSlots.push(slot);
+      } else {
+        eveningSlots.push(slot);
+      }
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "slots fetched successfully",
+      success: true,
+      data: {
+        morningSlots,
+        afternoonSlots,
+        eveningSlots,
+        slotDaySettings: {
+          isDoctorAvailableForTheDay,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching slots",
       success: false,
       err: err,
     });
@@ -1146,7 +1592,9 @@ exports.getDashboardOverview = async (req, res) => {
         }),
         prisma.appointments.count({
           where: {
-            appointmentStatus: "SCHEDULED",
+            appointmentStatus: {
+              in: ["APPROVED", "SCHEDULED"],
+            },
             hospitalId,
           },
         }),
@@ -1192,7 +1640,9 @@ exports.getDashboardOverviewToday = async (req, res) => {
       }),
       prisma.appointments.count({
         where: {
-          appointmentStatus: "SCHEDULED",
+          appointmentStatus: {
+            in: ["APPROVED", "SCHEDULED"],
+          },
           hospitalId,
           appointmentDate: {
             gte: startDate,

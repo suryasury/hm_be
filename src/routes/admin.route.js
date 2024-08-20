@@ -27,14 +27,49 @@ router.post(
   adminController.createDoctors,
 );
 router.post(
+  "/hospital/admin/create",
+  verifyAdminAccessToken,
+  adminController.createAdmin,
+);
+router.get(
+  "/hospital/admin/list",
+  verifyAdminAccessToken,
+  adminController.getAdminList,
+);
+router.get(
+  "/hospital/doctor/list",
+  verifyAdminAccessToken,
+  adminController.getDoctorsList,
+);
+router.patch(
+  "/hospital/admin/update/:userId",
+  verifyAdminAccessToken,
+  adminController.updateAdminDetails,
+);
+router.patch(
+  "/hospital/doctor/update/:doctorId",
+  verifyAdminAccessToken,
+  adminController.updateDoctorDetails,
+);
+router.post(
   "/hospital/weekdays/create",
   verifyAdminAccessToken,
   adminController.createWeekDays,
+);
+router.get(
+  "/hospital/weekdays/list",
+  verifyAdminAccessToken,
+  adminController.getWeekDaysList,
 );
 router.post(
   "/hospital/slots/create",
   verifyAdminAccessToken,
   adminController.createSlots,
+);
+router.get(
+  "/hospital/slots/list",
+  verifyAdminAccessToken,
+  adminController.getSlotList,
 );
 router.post(
   "/hospital/doctorslot/create",
