@@ -981,6 +981,8 @@ exports.getSlotListForDoctors = async (req, res) => {
         where: {
           doctorId: doctorId,
           weekDaysId: weekDayId,
+          isActive: true,
+          isDeleted: false,
         },
       };
     }
