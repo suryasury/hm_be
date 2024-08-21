@@ -41,6 +41,16 @@ router.get(
   verifyAdminAccessToken,
   adminController.getDoctorsList,
 );
+router.get(
+  "/hospital/doctor/details/:doctorId",
+  verifyAdminAccessToken,
+  adminController.getDoctorDetails,
+);
+router.get(
+  "/hospital/admin/details/:userId",
+  verifyAdminAccessToken,
+  adminController.getUserDetails,
+);
 router.patch(
   "/hospital/admin/update/:userId",
   verifyAdminAccessToken,

@@ -190,6 +190,96 @@ exports.createDoctors = async (req, res) => {
   }
 };
 
+exports.getDoctorDetails = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    let userDetails = await prisma.users.findUnique({
+      where: {
+        id: doctorId,
+      },
+      select: {
+        id: true,
+        name: true,
+        speciality: true,
+        profilePictureUrl: true,
+        isAdmin: true,
+        email: true,
+        houseNumber: true,
+        address1: true,
+        address2: true,
+        city: true,
+        state: true,
+        country: true,
+        pincode: true,
+        isd_code: true,
+        role: true,
+        hospitalId: true,
+      },
+    });
+    if (userDetails.profilePictureUrl) {
+      userDetails.signedUrl = await getPreSignedUrl(
+        userDetails.profilePictureUrl,
+      );
+    }
+    res.status(httpStatus.OK).send({
+      message: "Doctor details fetched",
+      success: true,
+      data: userDetails,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching doctor details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getUserDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    let userDetails = await prisma.users.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        profilePictureUrl: true,
+        isAdmin: true,
+        email: true,
+        houseNumber: true,
+        address1: true,
+        address2: true,
+        city: true,
+        state: true,
+        country: true,
+        pincode: true,
+        isd_code: true,
+        role: true,
+        hospitalId: true,
+      },
+    });
+    if (userDetails.profilePictureUrl) {
+      userDetails.signedUrl = await getPreSignedUrl(
+        userDetails.profilePictureUrl,
+      );
+    }
+    res.status(httpStatus.OK).send({
+      message: "User details fetched",
+      success: true,
+      data: userDetails,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching user details",
+      success: false,
+      err: err,
+    });
+  }
+};
 exports.createAdmin = async (req, res) => {
   try {
     const adminDetails = req.body;
