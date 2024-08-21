@@ -3,6 +3,7 @@ const router = express.Router();
 const verifyUserAccessToken = require("../middlewares/verifyAccessToken");
 const commonController = require("../controllers").commonController;
 const multer = require("multer");
+const verifyAdminAccessToken = require("../middlewares/verifyAdminAccessToken");
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
@@ -30,4 +31,10 @@ router.post(
   commonController.updateUserProfilePicture,
 );
 
+router.post(
+  "/:userType/update/profilepicture",
+  verifyAdminAccessToken,
+  upload.single("file"),
+  commonController.updateAdminsProfilePicture,
+);
 module.exports = router;

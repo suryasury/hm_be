@@ -81,6 +81,28 @@ exports.updateUserProfilePicture = async (req, res) => {
   }
 };
 
+exports.updateAdminsProfilePicture = async (req, res) => {
+  try {
+    const { userType } = req.params;
+    const file = req.file;
+    const bucketPath = `${userType}/profilepicture/${Date.now().toString()}-${
+      file.originalname
+    }`;
+    let serviceResponse = await this.uploadDocumentToS3(file, bucketPath);
+    res.status(httpStatus.OK).send({
+      message: "Profile picture uploaded",
+      success: true,
+      data: serviceResponse,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error uploading profile picture",
+      success: false,
+      err: err,
+    });
+  }
+};
 exports.uploadDocumentToS3 = async (file, bucketPath) => {
   try {
     let pathInBucket = bucketPath;
