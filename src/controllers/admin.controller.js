@@ -1826,7 +1826,6 @@ exports.getFeedbackList = async (req, res) => {
                   name: true,
                   speciality: true,
                   profilePictureUrl: true,
-                  address: true,
                   phoneNumber: true,
                   isd_code: true,
                 },
