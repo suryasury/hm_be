@@ -559,51 +559,125 @@ exports.updateAdminDetails = async (req, res) => {
 
 exports.updateDoctorDetails = async (req, res) => {
   try {
-    const doctorDetails = req.body;
+    const doctorDetails = req.body.doctorDetails || {};
+    const removedSlotIds = req.body.removedSlotIds || [];
+    const slotDetails = req.body.slotDetails || [];
     const { doctorId } = req.params;
-    const isUserExist = await prisma.users.findFirst({
-      where: {
-        role: "DOCTOR",
-        OR: [
-          {
-            email: doctorDetails.email,
-          },
-          {
-            phoneNumber: doctorDetails.phoneNumber,
-          },
-        ],
-      },
-    });
-    if (
-      isUserExist &&
-      doctorDetails.email &&
-      isUserExist.email === doctorDetails.email
-    ) {
-      return res.status(httpStatus.CONFLICT).send({
-        message: "Doctor already exists with given email",
-        success: true,
-        data: {},
+    if (Object.keys(doctorDetails).length > 0) {
+      const isUserExist = await prisma.users.findFirst({
+        where: {
+          role: "DOCTOR",
+          OR: [
+            {
+              email: doctorDetails.email,
+            },
+            {
+              phoneNumber: doctorDetails.phoneNumber,
+            },
+          ],
+        },
+      });
+      if (
+        isUserExist &&
+        doctorDetails.email &&
+        isUserExist.email === doctorDetails.email
+      ) {
+        return res.status(httpStatus.CONFLICT).send({
+          message: "Doctor already exists with given email",
+          success: true,
+          data: {},
+        });
+      }
+      if (
+        isUserExist &&
+        doctorDetails.phoneNumber &&
+        isUserExist.phoneNumber === doctorDetails.phoneNumber
+      ) {
+        return res.status(httpStatus.CONFLICT).send({
+          message: "Doctor already exists with given phone number",
+          success: true,
+          data: {},
+        });
+      }
+      await prisma.users.update({
+        where: {
+          id: doctorId,
+        },
+        data: {
+          ...doctorDetails,
+        },
       });
     }
-    if (
-      isUserExist &&
-      doctorDetails.phoneNumber &&
-      isUserExist.phoneNumber === doctorDetails.phoneNumber
-    ) {
-      return res.status(httpStatus.CONFLICT).send({
-        message: "Doctor already exists with given phone number",
-        success: true,
-        data: {},
+
+    if (removedSlotIds.length > 0) {
+      await prisma.doctorSlots.updateMany({
+        where: {
+          id: {
+            in: removedSlotIds,
+          },
+        },
+        data: {
+          isActive: false,
+          isDeleted: true,
+        },
       });
     }
-    await prisma.users.update({
-      where: {
-        id: doctorId,
-      },
-      data: {
-        ...doctorDetails,
-      },
-    });
+
+    if (slotDetails.length > 0) {
+      await Promise.all(
+        slotDetails.map(async (slot) => {
+          try {
+            if (slot.selectedSlots && slot.selectedSlots.length > 0) {
+              await Promise.all(
+                slot.selectedSlots.map(async (id) => {
+                  try {
+                    await prisma.doctorSlots.upsert({
+                      where: {
+                        doctorWeekDaySlotIdentifier: {
+                          doctorId,
+                          slotId: id,
+                          weekDaysId: slot.weekDaysId,
+                        },
+                      },
+                      create: {
+                        doctorId,
+                        weekDaysId: slot.weekDaysId,
+                        slotId: id,
+                        isDoctorAvailableForTheDay:
+                          slot.isDoctorAvailableForTheDay,
+                      },
+                      update: {
+                        isDoctorAvailableForTheDay:
+                          slot.isDoctorAvailableForTheDay,
+                        isActive: true,
+                        isDeleted: false,
+                      },
+                    });
+                  } catch (err) {
+                    console.log("weiriweurw", err);
+                    throw err;
+                  }
+                }),
+              );
+            } else {
+              await prisma.doctorSlots.updateMany({
+                where: {
+                  doctorId: doctorId,
+                  weekDaysId: slot.weekDaysId,
+                },
+                data: {
+                  isDoctorAvailableForTheDay: slot.isDoctorAvailableForTheDay,
+                },
+              });
+            }
+          } catch (err) {
+            console.log("weiriweurw", err);
+            throw err;
+          }
+        }),
+      );
+    }
+
     res.status(httpStatus.OK).send({
       message: "Doctor details updated successfully",
       success: true,
@@ -772,6 +846,8 @@ exports.getSlotList = async (req, res) => {
         where: {
           doctorId: doctorId,
           weekDaysId: weekDayId,
+          isActive: true,
+          isDeleted: false,
         },
       };
     }
