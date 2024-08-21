@@ -81,10 +81,25 @@ router.post(
   verifyAdminAccessToken,
   adminController.createSlots,
 );
+router.post(
+  "/hospital/slots/create/single",
+  verifyAdminAccessToken,
+  adminController.createSlotSingle,
+);
+router.delete(
+  "/hospital/slots/delete/:slotId",
+  verifyAdminAccessToken,
+  adminController.deleteSlot,
+);
+router.get(
+  "/hospital/slots/admin/list",
+  verifyAdminAccessToken,
+  adminController.getSlotList,
+);
 router.get(
   "/hospital/slots/list",
   verifyAdminAccessToken,
-  adminController.getSlotList,
+  adminController.getSlotListForDoctors,
 );
 router.post(
   "/hospital/doctorslot/create",

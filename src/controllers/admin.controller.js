@@ -293,6 +293,7 @@ exports.getDoctorDetails = async (req, res) => {
         isd_code: true,
         role: true,
         hospitalId: true,
+        phoneNumber: true,
       },
     });
     if (userDetails.profilePictureUrl) {
@@ -338,6 +339,7 @@ exports.getUserDetails = async (req, res) => {
         isd_code: true,
         role: true,
         hospitalId: true,
+        phoneNumber: true,
       },
     });
     if (userDetails.profilePictureUrl) {
@@ -818,7 +820,7 @@ exports.getWeekDaysList = async (req, res) => {
 exports.createSlots = async (req, res) => {
   try {
     const interval = parseInt(req.query.interval, 10);
-    const { id, hospitalId } = req.user;
+    const { hospitalId } = req.user;
 
     if (!interval || interval <= 0) {
       return res.status(400).json({ error: "Invalid interval" });
@@ -892,7 +894,80 @@ exports.createSlots = async (req, res) => {
   }
 };
 
-exports.getSlotList = async (req, res) => {
+exports.createSlotSingle = async (req, res) => {
+  try {
+    const { hospitalId } = req.user;
+    const slotDetails = req.body;
+
+    let slotStartTimeInDate = convertToDateTime(slotDetails.startTime);
+    let slotEndTimeInDate = convertToDateTime(slotDetails.endTime);
+
+    let slot = await prisma.slots.upsert({
+      where: {
+        slotTimeHospitalUniqueIdentifier: {
+          hospitalId: hospitalId,
+          startTime: slotDetails.startTime,
+          endTime: slotDetails.endTime,
+        },
+      },
+      create: {
+        startTime: slotDetails.startTime,
+        endTime: slotDetails.endTime,
+        hospitalId: hospitalId,
+        startTimeInDateTime: slotStartTimeInDate,
+        endTimeInDateTime: slotEndTimeInDate,
+      },
+      update: {
+        isActive: true,
+        isDeleted: false,
+      },
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "slot created successfully",
+      success: true,
+      data: slot,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error creating slot",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.deleteSlot = async (req, res) => {
+  try {
+    const { slotId } = req.params;
+
+    await prisma.slots.update({
+      where: {
+        id: slotId,
+      },
+      data: {
+        isActive: false,
+        isDeleted: true,
+      },
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "slot deleted successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error deleting slot",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getSlotListForDoctors = async (req, res) => {
   try {
     const { doctorId, weekDayId } = req.query;
     const { hospitalId } = req.user;
@@ -906,16 +981,24 @@ exports.getSlotList = async (req, res) => {
         where: {
           doctorId: doctorId,
           weekDaysId: weekDayId,
-          isActive: true,
-          isDeleted: false,
         },
       };
     }
     let slotList = await prisma.slots.findMany({
       where: {
         hospitalId: hospitalId,
+        isActive: true,
+        isDeleted: false,
       },
       select: selectClause,
+      orderBy: [
+        {
+          startTimeInDateTime: "asc",
+        },
+        {
+          endTimeInDateTime: "asc",
+        },
+      ],
     });
 
     let isDoctorAvailableForTheDay = false;
@@ -942,7 +1025,6 @@ exports.getSlotList = async (req, res) => {
     });
 
     slotList.forEach((slot) => {
-      console.log(slot);
       if (determineTimePeriod(slot.startTime) === "morning") {
         morningSlots.push(slot);
       } else if (determineTimePeriod(slot.startTime) === "afternoon") {
@@ -968,6 +1050,49 @@ exports.getSlotList = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error fetching slots",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getSlotList = async (req, res) => {
+  try {
+    const { hospitalId } = req.user;
+
+    let slotList = await prisma.slots.findMany({
+      where: {
+        hospitalId: hospitalId,
+        isActive: true,
+        isDeleted: false,
+      },
+      select: {
+        startTime: true,
+        endTime: true,
+        id: true,
+      },
+      orderBy: [
+        {
+          startTimeInDateTime: "asc",
+        },
+        {
+          endTimeInDateTime: "asc",
+        },
+      ],
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "slot list fetched successfully",
+      success: true,
+      data: {
+        slotList,
+        meta: {},
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching slot list",
       success: false,
       err: err,
     });

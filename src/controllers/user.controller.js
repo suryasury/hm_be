@@ -240,10 +240,26 @@ exports.doctorSlotDetails = async (req, res) => {
       where: {
         doctorId: doctorId,
         weekDaysId: weekDayId,
+        slot: {
+          isActive: true,
+          isDeleted: false,
+        },
       },
       include: {
         slot: true,
       },
+      orderBy: [
+        {
+          slot: {
+            startTimeInDateTime: "asc",
+          },
+        },
+        {
+          slot: {
+            endTimeInDateTime: "asc",
+          },
+        },
+      ],
     });
     let morningSlots = [];
     let afternoonSlots = [];

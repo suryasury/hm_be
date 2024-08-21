@@ -157,6 +157,8 @@ model slots {
   hospitalId          String
   hospital            hospitals     @relation(fields: [hospitalId], references: [id])
   doctorSlots         doctorSlots[]
+
+  @@unique([startTime, endTime, hospitalId], name: "slotTimeHospitalUniqueIdentifier")
 }
 
 model weekdays {
