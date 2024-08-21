@@ -26,6 +26,11 @@ router.post(
   verifyAdminAccessToken,
   adminController.createDoctors,
 );
+router.patch(
+  "/hospital/user/profile/update",
+  verifyAdminAccessToken,
+  adminController.updateUserProfileDetails,
+);
 router.post(
   "/hospital/admin/create",
   verifyAdminAccessToken,

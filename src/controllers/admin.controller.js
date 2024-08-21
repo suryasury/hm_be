@@ -208,7 +208,67 @@ exports.createDoctors = async (req, res) => {
     });
   }
 };
+exports.updateUserProfileDetails = async (req, res) => {
+  try {
+    const userDetails = req.body;
+    const { id } = req.user;
+    const isUserExist = await prisma.users.findFirst({
+      where: {
+        OR: [
+          {
+            email: userDetails.email,
+          },
+          {
+            phoneNumber: userDetails.phoneNumber,
+          },
+        ],
+      },
+    });
+    if (
+      isUserExist &&
+      userDetails.email &&
+      isUserExist.email === userDetails.email
+    ) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "User already exists with given email",
+        success: true,
+        data: {},
+      });
+    }
+    if (
+      isUserExist &&
+      userDetails.phoneNumber &&
+      isUserExist.phoneNumber === userDetails.phoneNumber
+    ) {
+      return res.status(httpStatus.CONFLICT).send({
+        message: "User already exists with given phone number",
+        success: true,
+        data: {},
+      });
+    }
+    await prisma.users.update({
+      where: {
+        id: id,
+      },
+      data: {
+        ...userDetails,
+      },
+    });
 
+    res.status(httpStatus.OK).send({
+      message: "User details updated successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error updating user details",
+      success: false,
+      err: err,
+    });
+  }
+};
 exports.getDoctorDetails = async (req, res) => {
   try {
     const { doctorId } = req.params;
