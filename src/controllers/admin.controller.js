@@ -941,7 +941,8 @@ exports.getSlotList = async (req, res) => {
       };
     });
 
-    slotList.map((slot) => {
+    slotList.forEach((slot) => {
+      console.log(slot);
       if (determineTimePeriod(slot.startTime) === "morning") {
         morningSlots.push(slot);
       } else if (determineTimePeriod(slot.startTime) === "afternoon") {
