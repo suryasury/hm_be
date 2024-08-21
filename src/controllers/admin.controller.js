@@ -144,7 +144,8 @@ exports.createHospitals = async (req, res) => {
 
 exports.createDoctors = async (req, res) => {
   try {
-    const doctorDetails = req.body;
+    const doctorDetails = req.body.doctorDetails || {};
+    const slotDetails = req.body.slotDetails || [];
     const { hospitalId } = req.user;
     const hashedPassword = hashPassword("Password@123");
     const isUserExist = await prisma.users.findFirst({
@@ -167,7 +168,7 @@ exports.createDoctors = async (req, res) => {
         data: {},
       });
     }
-    let result = await prisma.users.create({
+    let newDoctorDetails = await prisma.users.create({
       data: {
         hospitalId: hospitalId,
         isAdmin: false,
@@ -175,10 +176,28 @@ exports.createDoctors = async (req, res) => {
         ...doctorDetails,
       },
     });
+
+    if (slotDetails.length > 0) {
+      let slotsArray = [];
+      slotDetails.map((slot) => {
+        slot.selectedSlots.map((id) => {
+          slotsArray.push({
+            doctorId: newDoctorDetails.id,
+            slotId: id,
+            weekDaysId: slot.weekDaysId,
+            slotLimit: 0,
+            isDoctorAvailableForTheDay: slot.isDoctorAvailableForTheDay,
+          });
+        });
+      });
+      await prisma.doctorSlots.createMany({
+        data: slotsArray,
+      });
+    }
     res.status(httpStatus.OK).send({
       message: "Doctor created successfully",
       success: true,
-      data: result,
+      data: {},
     });
   } catch (err) {
     console.log("err", err);
