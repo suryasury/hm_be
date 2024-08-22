@@ -374,6 +374,7 @@ exports.getDoctorDetails = async (req, res) => {
         role: true,
         hospitalId: true,
         phoneNumber: true,
+        qualification: true,
       },
     });
     if (userDetails.profilePictureUrl) {

@@ -644,6 +644,7 @@ exports.getPrescriptionDetails = async (req, res) => {
             prescriptionTimeOfDay: pTimeOfDay.timeOfDay,
             isPrescriptionTaken: pTimeOfDay.isPrescriptionTaken,
             prescriptionStockId: prescription.prescriptionStockId,
+            prescriptionRemarks: prescription.prescriptionRemarks,
           };
           if (pTimeOfDay.timeOfDay === "MORNING") {
             morningPrescription.push(prescriptionResult);
