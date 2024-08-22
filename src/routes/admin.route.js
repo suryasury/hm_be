@@ -86,6 +86,11 @@ router.post(
   verifyAdminAccessToken,
   adminController.createSlotSingle,
 );
+router.patch(
+  "/hospital/slots/edit/:slotId",
+  verifyAdminAccessToken,
+  adminController.editSlot,
+);
 router.delete(
   "/hospital/slots/delete/:slotId",
   verifyAdminAccessToken,

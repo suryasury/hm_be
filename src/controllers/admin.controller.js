@@ -967,6 +967,58 @@ exports.deleteSlot = async (req, res) => {
   }
 };
 
+exports.editSlot = async (req, res) => {
+  try {
+    const { slotId } = req.params;
+    const slotDetails = req.body;
+    const { hospitalId } = req.user;
+
+    const isSlotExist = await prisma.slots.findUnique({
+      where: {
+        slotTimeHospitalUniqueIdentifier: {
+          startTime: slotDetails.startTime,
+          endTime: slotDetails.endTime,
+          hospitalId,
+        },
+      },
+    });
+
+    if (isSlotExist) {
+      if (isSlotExist.isActive && !isSlotExist.isDeleted)
+        return res.status(httpStatus.CONFLICT).send({
+          message: "Slot already exists for given start and end time",
+          success: false,
+          data: {},
+        });
+    }
+
+    await prisma.slots.update({
+      where: {
+        id: slotId,
+      },
+      data: {
+        startTime: slotDetails.startTime,
+        endTime: slotDetails.endTime,
+        isActive: true,
+        isDeleted: false,
+      },
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "Slot updated successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error deleting slot",
+      success: false,
+      err: err,
+    });
+  }
+};
+
 exports.getSlotListForDoctors = async (req, res) => {
   try {
     const { doctorId, weekDayId } = req.query;
@@ -1755,6 +1807,17 @@ exports.getAppointmentDetails = async (req, res) => {
         hospitalId: true,
         remarks: true,
         doctorRemarks: true,
+        isFeedbackProvided: true,
+        appointmentFeedbacks: {
+          select: {
+            id: true,
+            appointmentId: true,
+            overallSatisfaction: true,
+            feedBackRemarks: true,
+            hospitalId: true,
+            patientId: true,
+          },
+        },
         patientPrescription: {
           select: {
             id: true,
