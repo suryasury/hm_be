@@ -130,6 +130,7 @@ model users {
   state             String?
   pincode           String?
   country           String?
+  qualification     String?
   phoneNumber       String
   isd_code          String
   role              roles
@@ -245,6 +246,11 @@ model appointments {
   hospitalId             String
   remarks                String?
   doctorRemarks          String?
+  feverLevel             String?
+  bloodPreassure         String?
+  pulse                  String?
+  patientWeight          String?
+  otherVitalRemarks      String?
   ailmentId              String
   tokenNumber            String
   appointmentStatus      appointmentStatuses
@@ -261,20 +267,21 @@ model appointments {
 }
 
 model patientPrescription {
-  id                String             @id @default(cuid())
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  appointmentId     String
-  appointment       appointments       @relation(fields: [appointmentId], references: [id])
-  patientId         String
-  patient           patients           @relation(fields: [patientId], references: [id])
-  hospitalId        String
-  hospital          hospitals          @relation(fields: [hospitalId], references: [id])
-  durationInDays    Int
-  medicationStockId String
-  medicationStock   medicationStocks   @relation(fields: [medicationStockId], references: [id])
-  foodRelation      foodRelationEnum
-  prescriptionDays  prescriptionDays[]
+  id                  String             @id @default(cuid())
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  appointmentId       String
+  appointment         appointments       @relation(fields: [appointmentId], references: [id])
+  patientId           String
+  patient             patients           @relation(fields: [patientId], references: [id])
+  hospitalId          String
+  prescriptionRemarks String?
+  hospital            hospitals          @relation(fields: [hospitalId], references: [id])
+  durationInDays      Int
+  medicationStockId   String
+  medicationStock     medicationStocks   @relation(fields: [medicationStockId], references: [id])
+  foodRelation        foodRelationEnum
+  prescriptionDays    prescriptionDays[]
 }
 
 model prescriptionDays {

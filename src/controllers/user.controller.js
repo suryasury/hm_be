@@ -379,15 +379,15 @@ exports.getAppointmentList = async (req, res) => {
       },
       orderBy: [
         {
-          appointmentDate: "asc",
+          createdAt: "desc",
         },
-        {
-          doctorSlots: {
-            slot: {
-              startTimeInDateTime: "asc",
-            },
-          },
-        },
+        // {
+        //   doctorSlots: {
+        //     slot: {
+        //       startTimeInDateTime: "asc",
+        //     },
+        //   },
+        // },
       ],
     });
     res.status(httpStatus.OK).send({
@@ -426,15 +426,15 @@ exports.getAppointmentHistoryList = async (req, res) => {
       },
       orderBy: [
         {
-          appointmentDate: "asc",
+          createdAt: "desc",
         },
-        {
-          doctorSlots: {
-            slot: {
-              startTimeInDateTime: "asc",
-            },
-          },
-        },
+        // {
+        //   doctorSlots: {
+        //     slot: {
+        //       startTimeInDateTime: "asc",
+        //     },
+        //   },
+        // },
       ],
     });
     res.status(httpStatus.OK).send({

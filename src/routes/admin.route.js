@@ -1,11 +1,18 @@
 const express = require("express");
 const verifyAdminAccessToken = require("../middlewares/verifyAdminAccessToken");
+const verifyAdminResetPasswordToken = require("../middlewares/verifyAdminResetPasswordToken");
 const router = express.Router();
 const adminController = require("../controllers").adminController;
 
 router.post("/login", adminController.login);
 router.post("/signup", adminController.signUp);
 router.get("/details", verifyAdminAccessToken, adminController.getAdminDetails);
+router.post("/forgot-password", adminController.forgotPasswordEmailRequest);
+router.post(
+  "/reset-password/:token",
+  verifyAdminResetPasswordToken,
+  adminController.resetPassword,
+);
 router.get(
   "/patient/details/:patientId",
   verifyAdminAccessToken,
@@ -45,6 +52,11 @@ router.get(
   "/hospital/doctor/list",
   verifyAdminAccessToken,
   adminController.getDoctorsList,
+);
+router.get(
+  "/hospital/doctor/minified/list",
+  verifyAdminAccessToken,
+  adminController.getDoctorsMinifiedList,
 );
 router.get(
   "/hospital/doctor/details/:doctorId",
@@ -150,6 +162,11 @@ router.post(
   "/hospital/appointment/update/status",
   verifyAdminAccessToken,
   adminController.updateAppointmentStatus,
+);
+router.patch(
+  "/hospital/appointment/update/vitals/:appointmentId",
+  verifyAdminAccessToken,
+  adminController.updatePatientAppointmentVitals,
 );
 router.post(
   "/hospital/medication/create",

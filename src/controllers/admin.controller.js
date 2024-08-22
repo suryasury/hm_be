@@ -69,6 +69,86 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.forgotPasswordEmailRequest = async (req, res) => {
+  try {
+    let email = req.body.email;
+    let userDetails = await prisma.users.findFirst({
+      where: {
+        email: email,
+      },
+    });
+    if (!userDetails) {
+      return res.status(httpStatus.NOT_FOUND).send({
+        message: "Invalid email or email not found",
+        success: false,
+        data: {},
+      });
+    }
+    let template = fs.readFileSync(
+      "emailTemplates/forgotPassword.html",
+      "utf-8",
+    );
+    let token = generateAccesToken(
+      {
+        userId: userDetails.id,
+      },
+      "30m",
+    );
+    let html = template
+      .replace("{{name}}", userDetails.name)
+      .replace(
+        /{{resetLink}}/g,
+        process.env.RESET_PASSWORD_FRONTEND_HOST_ADMIN + token,
+      );
+    await emailService.sendEmail({
+      from: process.env.SMTP_EMAIL,
+      to: userDetails.email,
+      subject: "Reset password",
+      html: html,
+    });
+    res.status(httpStatus.OK).send({
+      message:
+        "Reset password link has been sent to your email. Kindly check the email and proceed further",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error sending email. Please try again after sometime",
+      success: false,
+      error: err,
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const userDetails = req.user;
+    const hashedPassword = hashPassword(password);
+    await prisma.admins.update({
+      data: {
+        password: hashedPassword,
+      },
+      where: {
+        id: parseInt(userDetails.id),
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Password changed successfully. Please login again",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: err.message,
+      success: false,
+      error: err,
+    });
+  }
+};
+
 exports.signUp = async (req, res) => {
   try {
     let userDetails = req.body;
@@ -551,6 +631,69 @@ exports.getDoctorsList = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error fetching doctor list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getDoctorsMinifiedList = async (req, res) => {
+  try {
+    const { hospitalId } = req.user;
+    // const limit = parseInt(req.query.limit || 10);
+    // const page = parseInt(req.query.page || 1);
+    const searchQuery = req.query.search || "";
+    // const skip = limit * (page - 1);
+    let whereClause = {
+      hospitalId: hospitalId,
+      role: "DOCTOR",
+      isActive: true,
+      isDeleted: false,
+    };
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          name: {
+            contains: searchQuery,
+          },
+        },
+        {
+          email: {
+            contains: searchQuery,
+          },
+        },
+        {
+          phoneNumber: {
+            contains: searchQuery,
+          },
+        },
+      ];
+    }
+
+    const doctorMinifiedList = await prisma.users.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phoneNumber: true,
+        isd_code: true,
+        speciality: true,
+      },
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "Doctor minified list fetched",
+      success: true,
+      data: {
+        doctorMinifiedList: doctorMinifiedList,
+        meta: {},
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error fetching doctor minified list",
       success: false,
       err: err,
     });
@@ -1385,6 +1528,7 @@ exports.updateAppointmentStatus = async (req, res) => {
                     appointmentId: appointmentId,
                     patientId: appointUpdateResult.patientId,
                     hospitalId: appointUpdateResult.hospitalId,
+                    prescriptionRemarks: prescription.prescriptionRemarks || "",
                   },
                 },
               );
@@ -1443,6 +1587,33 @@ exports.updateAppointmentStatus = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error updating appointment status",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.updatePatientAppointmentVitals = async (req, res) => {
+  try {
+    let appointmentId = req.params.appointmentId;
+    let vitalDetails = req.body;
+
+    await prisma.appointments.update({
+      where: {
+        id: appointmentId,
+      },
+      data: vitalDetails,
+    });
+
+    res.status(httpStatus.OK).send({
+      message: "Vital details updated",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error updating vital details",
       success: false,
       err: err,
     });
@@ -1674,6 +1845,7 @@ exports.getAppointmentList = async (req, res) => {
     const patientId = req.query.patientId;
     const { hospitalId } = req.user;
     const searchQuery = req.query.search;
+    const doctorId = req.query.doctorId;
     const appointmentStatus = req.query.appointmentStatus;
     let whereClause = {
       hospitalId,
@@ -1714,11 +1886,15 @@ exports.getAppointmentList = async (req, res) => {
       };
     }
 
+    if (doctorId) {
+      whereClause.doctorId = doctorId;
+    }
+
     const [appointmentList, count] = await prisma.$transaction([
       prisma.appointments.findMany({
         orderBy: [
           {
-            appointmentDate: "asc",
+            createdAt: "desc",
           },
         ],
         skip,
@@ -1808,6 +1984,11 @@ exports.getAppointmentDetails = async (req, res) => {
         remarks: true,
         doctorRemarks: true,
         isFeedbackProvided: true,
+        feverLevel: true,
+        bloodPreassure: true,
+        pulse: true,
+        patientWeight: true,
+        otherVitalRemarks: true,
         appointmentFeedbacks: {
           select: {
             id: true,
@@ -1823,6 +2004,7 @@ exports.getAppointmentDetails = async (req, res) => {
             id: true,
             durationInDays: true,
             foodRelation: true,
+            prescriptionRemarks: true,
             prescriptionDays: {
               select: {
                 id: true,
@@ -1870,6 +2052,7 @@ exports.getAppointmentDetails = async (req, res) => {
             name: true,
             speciality: true,
             profilePictureUrl: true,
+            qualification: true,
           },
         },
         patient: {
@@ -1880,6 +2063,7 @@ exports.getAppointmentDetails = async (req, res) => {
             phoneNumber: true,
             isd_code: true,
             bloodGroup: true,
+            dateOfBirth: true,
           },
         },
         ailment: {
