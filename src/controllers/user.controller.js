@@ -311,11 +311,47 @@ exports.createAppointment = async (req, res) => {
       appointmentDetails.appointmentDate,
     );
 
+    //will do concurrency control later
+    const isTokenExists = await prisma.tokenNumberTrackers.findUnique({
+      where: {
+        doctorSlotDateHospitalUniqueIdentifier: {
+          date: startDate,
+          doctorSlotId: appointmentDetails.doctorSlotId,
+          hospitalId: appointmentDetails.hospitalId,
+        },
+      },
+    });
+
+    let updatedTokenRecord = {};
+
+    if (isTokenExists) {
+      updatedTokenRecord = await prisma.tokenNumberTrackers.update({
+        where: {
+          id: isTokenExists.id,
+        },
+        data: {
+          currentValue: {
+            increment: 1,
+          },
+        },
+      });
+    } else {
+      updatedTokenRecord = await prisma.tokenNumberTrackers.create({
+        data: {
+          date: startDate,
+          hospitalId: appointmentDetails.hospitalId,
+          doctorSlotId: appointmentDetails.doctorSlotId,
+          currentValue: 1,
+        },
+      });
+    }
+    let tokenNumber = updatedTokenRecord.currentValue;
+    tokenNumber = tokenNumber.toString().padStart(4, "0");
     let newAppointment = await prisma.appointments.create({
       data: {
         appointmentStatus: "SCHEDULED",
         patientId: id,
-        tokenNumber: "0001",
+        tokenNumber: tokenNumber,
         ...appointmentDetails,
         appointmentDate: startDate,
       },

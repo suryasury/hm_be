@@ -76,6 +76,7 @@ model hospitals {
   hospitalPatients     hospitalPatients[]
   ailment              ailment[]
   documentTypes        documentTypes[]
+  tokenNumberTrackers  tokenNumberTrackers[]
 }
 
 // model roles {
@@ -170,21 +171,22 @@ model weekdays {
 }
 
 model doctorSlots {
-  id                         String         @id @default(cuid())
+  id                         String                @id @default(cuid())
   doctorId                   String
-  createdAt                  DateTime       @default(now())
-  updatedAt                  DateTime       @updatedAt
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
   slotId                     String
   weekDaysId                 String
-  isDoctorAvailableForTheDay Boolean        @default(true)
-  slotLimit                  Int            @default(0)
-  isEnabled                  Boolean        @default(true)
-  isActive                   Boolean        @default(true)
-  isDeleted                  Boolean        @default(false)
-  doctor                     users          @relation(fields: [doctorId], references: [id])
-  slot                       slots          @relation(fields: [slotId], references: [id])
-  dayOfWeek                  weekdays       @relation(fields: [weekDaysId], references: [id])
+  isDoctorAvailableForTheDay Boolean               @default(true)
+  slotLimit                  Int                   @default(0)
+  isEnabled                  Boolean               @default(true)
+  isActive                   Boolean               @default(true)
+  isDeleted                  Boolean               @default(false)
+  doctor                     users                 @relation(fields: [doctorId], references: [id])
+  slot                       slots                 @relation(fields: [slotId], references: [id])
+  dayOfWeek                  weekdays              @relation(fields: [weekDaysId], references: [id])
   appointments               appointments[]
+  tokenNumberTrackers        tokenNumberTrackers[]
 
   @@unique([doctorId, slotId, weekDaysId], name: "doctorWeekDaySlotIdentifier")
 }
@@ -386,4 +388,21 @@ model documentTypes {
   hospitalId             String
   hopital                hospitals                @relation(fields: [hospitalId], references: [id])
   patientAppointmentDocs patientAppointmentDocs[]
+}
+
+model tokenNumberTrackers {
+  id           String      @id @default(cuid())
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  doctorSlotId String
+  date         DateTime
+  currentValue Int
+  isActive     Boolean     @default(true)
+  isDeleted    Boolean     @default(false)
+  hospitalId   String
+  hopital      hospitals   @relation(fields: [hospitalId], references: [id])
+  doctorSlot   doctorSlots @relation(fields: [doctorSlotId], references: [id])
+
+  @@unique([doctorSlotId, date], name: "doctorSlotDateuniqueIdentifier")
+  @@unique([doctorSlotId, date, hospitalId], name: "doctorSlotDateHospitalUniqueIdentifier")
 }
