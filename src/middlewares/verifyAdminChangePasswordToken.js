@@ -15,7 +15,7 @@ module.exports = async (req, res, next) => {
             error: err,
             data: {},
             success: false,
-            message: "Reset password link is invalid or expired",
+            message: "Token Expired",
           };
         }
         return { data: payload, success: true };
@@ -44,7 +44,7 @@ module.exports = async (req, res, next) => {
         return error(
           {
             statusCode: httpStatus.UNAUTHORIZED,
-            message: "Reset password link is invalid or expired",
+            message: "Token Expired",
             error: jwtData.error,
           },
           res,
@@ -54,7 +54,7 @@ module.exports = async (req, res, next) => {
       return error(
         {
           statusCode: httpStatus.UNAUTHORIZED,
-          message: "Reset password link is invalid or expired",
+          message: "Token Expired",
           error: {},
         },
         res,

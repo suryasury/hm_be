@@ -1,15 +1,24 @@
 const express = require("express");
 const verifyAdminAccessToken = require("../middlewares/verifyAdminAccessToken");
 const verifyAdminResetPasswordToken = require("../middlewares/verifyAdminResetPasswordToken");
+const verifyAdminChangePassword = require("../middlewares/verifyAdminChangePasswordToken");
 const router = express.Router();
 const adminController = require("../controllers").adminController;
 
 router.post("/login", adminController.login);
 router.post("/signup", adminController.signUp);
 router.get("/details", verifyAdminAccessToken, adminController.getAdminDetails);
-router.post("/forgot-password", adminController.forgotPasswordEmailRequest);
+router.patch(
+  "/change-password",
+  verifyAdminChangePassword,
+  adminController.changePassword,
+);
 router.post(
-  "/reset-password/:token",
+  "/forgot-password/email/request",
+  adminController.forgotPasswordEmailRequest,
+);
+router.patch(
+  "/reset-password",
   verifyAdminResetPasswordToken,
   adminController.resetPassword,
 );

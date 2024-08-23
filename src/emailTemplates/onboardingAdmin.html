@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Onboarding mail</title>
+  </head>
+  <body>
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">
+      <h2 style="color: #333">Hello {{name}},</h2>
+      <p style="color: #666; margin-top: 0px">
+        We’re excited to introduce our Hospital management system. As an
+        administrator, you now have access to a powerful tool that will
+        streamline your daily operations and improve the overall efficiency of
+        our hospital.
+      </p>
+      <p style="color: #666; margin-top: 10px; margin-bottom: 10px">
+        To access the portal, click the following URL:
+        <a href="{{loginUrl}}">{{loginUrl}}</a>
+      </p>
+      <p style="color: #666; margin-top: 0px; margin-bottom: 10px">
+        Email: {{emailId}}
+      </p>
+      <p style="color: #666; margin-top: 0px">Password: {{password}}</p>
+      <p style="color: red; margin-top: 10px">
+        Note: This is the randomly generated unique password and you would be
+        required to change the password immediately after login
+      </p>
+      <p style="color: black; margin-top: 10px; font-weight: bold">
+        Please reach out to admin in case of any difficulties while logging in
+      </p>
+      <p style="color: #666; margin-bottom: 5px">Thank you</p>
+      <p style="color: #666; margin-top: 0px">{{hospitalName}}</p>
+    </div>
+  </body>
+</html>

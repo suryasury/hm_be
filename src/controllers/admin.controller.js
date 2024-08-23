@@ -10,6 +10,9 @@ const generateAccesToken = require("../helpers/generateAccessToken");
 const hashPassword = require("../helpers/hashPassword");
 const { getPreSignedUrl } = require("./common.controller");
 const prisma = new PrismaClient();
+const fs = require("fs");
+const emailService = require("../utils/emailService");
+const generatePassword = require("../helpers/generatePassword");
 
 exports.login = async (req, res) => {
   try {
@@ -33,18 +36,33 @@ exports.login = async (req, res) => {
         userDetails.password,
       );
       if (isValidPassword) {
-        const jwtToken = generateAccesToken({
-          userId: userDetails.id,
-        });
-        res.cookie("sessionToken", jwtToken, {
-          httpOnly: true,
-          secure: true,
-          sameSite: "none",
-        });
+        const expiresIn = userDetails.needPasswordChange ? "30m" : "12h";
+        const jwtToken = generateAccesToken(
+          {
+            userId: userDetails.id,
+          },
+          expiresIn,
+        );
+        let accessToken = "";
+        let message = "";
+        if (userDetails.needPasswordChange) {
+          message = "Please change the password to proceed";
+          accessToken = jwtToken;
+        } else {
+          message = "User Logged in successfully";
+          res.cookie("sessionToken", jwtToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+          });
+        }
         return res.status(httpStatus.OK).send({
-          message: "User Logged in successfully",
+          message,
           success: true,
-          data: {},
+          data: {
+            needPasswordChange: userDetails.needPasswordChange,
+            accessToken,
+          },
         });
       } else {
         return res.status(httpStatus.FORBIDDEN).send({
@@ -85,7 +103,7 @@ exports.forgotPasswordEmailRequest = async (req, res) => {
       });
     }
     let template = fs.readFileSync(
-      "emailTemplates/forgotPassword.html",
+      "src/emailTemplates/forgotPassword.html",
       "utf-8",
     );
     let token = generateAccesToken(
@@ -103,7 +121,7 @@ exports.forgotPasswordEmailRequest = async (req, res) => {
     await emailService.sendEmail({
       from: process.env.SMTP_EMAIL,
       to: userDetails.email,
-      subject: "Reset password",
+      subject: "Reset Password",
       html: html,
     });
     res.status(httpStatus.OK).send({
@@ -125,17 +143,63 @@ exports.forgotPasswordEmailRequest = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const userDetails = req.user;
+    const { password } = req.body;
     const hashedPassword = hashPassword(password);
-    await prisma.admins.update({
+    await prisma.users.update({
       data: {
         password: hashedPassword,
       },
       where: {
-        id: parseInt(userDetails.id),
+        id: userDetails.id,
       },
     });
     res.status(httpStatus.OK).send({
       message: "Password changed successfully. Please login again",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: err.message,
+      success: false,
+      error: err,
+    });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const userDetails = req.user;
+    const { oldPassword, newPassword } = req.body;
+    const isValidPassword = validatePassword(oldPassword, userDetails.password);
+    if (!isValidPassword) {
+      return res.status(httpStatus.FORBIDDEN).send({
+        message: "Invalid old password. Please try again",
+        success: false,
+        data: {},
+      });
+    }
+    const hashedPassword = hashPassword(newPassword);
+    await prisma.users.update({
+      data: {
+        password: hashedPassword,
+        needPasswordChange: false,
+      },
+      where: {
+        id: userDetails.id,
+      },
+    });
+    const jwtToken = generateAccesToken({
+      userId: userDetails.id,
+    });
+    res.cookie("sessionToken", jwtToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
+    res.status(httpStatus.OK).send({
+      message: "Password changed successfully",
       success: true,
       data: {},
     });
@@ -227,7 +291,8 @@ exports.createDoctors = async (req, res) => {
     const doctorDetails = req.body.doctorDetails || {};
     const slotDetails = req.body.slotDetails || [];
     const { hospitalId } = req.user;
-    const hashedPassword = hashPassword("Password@123");
+    const password = generatePassword();
+    const hashedPassword = hashPassword(password);
     const isUserExist = await prisma.users.findFirst({
       where: {
         role: "DOCTOR",
@@ -248,7 +313,7 @@ exports.createDoctors = async (req, res) => {
         data: {},
       });
     }
-    let newDoctorDetails = await prisma.users.create({
+    const newDoctorDetails = await prisma.users.create({
       data: {
         hospitalId: hospitalId,
         isAdmin: false,
@@ -274,6 +339,30 @@ exports.createDoctors = async (req, res) => {
         data: slotsArray,
       });
     }
+    const hospitalDetails = await prisma.hospitals.findUnique({
+      where: {
+        id: hospitalId,
+      },
+      select: {
+        name: true,
+      },
+    });
+    let template = fs.readFileSync(
+      "src/emailTemplates/onboardingDoctor.html",
+      "utf-8",
+    );
+    let html = template
+      .replace("{{name}}", newDoctorDetails.name)
+      .replace(/{{loginUrl}}/g, process.env.FRONTEND_URL_ADMIN)
+      .replace("{{emailId}}", newDoctorDetails.email)
+      .replace("{{password}}", password)
+      .replace("{{hospitalName}}", hospitalDetails.name);
+    await emailService.sendEmail({
+      from: process.env.SMTP_EMAIL,
+      to: newDoctorDetails.email,
+      subject: `Welcome ${newDoctorDetails.name}`,
+      html: html,
+    });
     res.status(httpStatus.OK).send({
       message: "Doctor created successfully",
       success: true,
@@ -446,7 +535,8 @@ exports.createAdmin = async (req, res) => {
   try {
     const adminDetails = req.body;
     const { hospitalId } = req.user;
-    const hashedPassword = hashPassword("Password@123");
+    const password = generatePassword();
+    const hashedPassword = hashPassword(password);
     const isUserExist = await prisma.users.findFirst({
       where: {
         role: "ADMIN",
@@ -467,7 +557,7 @@ exports.createAdmin = async (req, res) => {
         data: {},
       });
     }
-    const result = await prisma.users.create({
+    const newUserDetails = await prisma.users.create({
       data: {
         hospitalId: hospitalId,
         isAdmin: true,
@@ -475,10 +565,34 @@ exports.createAdmin = async (req, res) => {
         ...adminDetails,
       },
     });
+    const hospitalDetails = await prisma.hospitals.findUnique({
+      where: {
+        id: hospitalId,
+      },
+      select: {
+        name: true,
+      },
+    });
+    let template = fs.readFileSync(
+      "src/emailTemplates/onboardingAdmin.html",
+      "utf-8",
+    );
+    let html = template
+      .replace("{{name}}", newUserDetails.name)
+      .replace(/{{loginUrl}}/g, process.env.FRONTEND_URL_ADMIN)
+      .replace("{{emailId}}", newUserDetails.email)
+      .replace("{{password}}", password)
+      .replace("{{hospitalName}}", hospitalDetails.name);
+    await emailService.sendEmail({
+      from: process.env.SMTP_EMAIL,
+      to: newUserDetails.email,
+      subject: `Welcome ${newUserDetails.name}`,
+      html: html,
+    });
     res.status(httpStatus.OK).send({
       message: "User created successfully",
       success: true,
-      data: result,
+      data: {},
     });
   } catch (err) {
     console.log("err", err);
@@ -1847,6 +1961,7 @@ exports.getAppointmentList = async (req, res) => {
     const { hospitalId } = req.user;
     const searchQuery = req.query.search;
     const doctorId = req.query.doctorId;
+    const date = req.query.date;
     const appointmentStatus = req.query.appointmentStatus;
     let whereClause = {
       hospitalId,
@@ -1889,6 +2004,11 @@ exports.getAppointmentList = async (req, res) => {
 
     if (doctorId) {
       whereClause.doctorId = doctorId;
+    }
+
+    if (date) {
+      const { startDate } = getStartAndEndOfDay(date);
+      whereClause.appointmentDate = startDate.toISOString();
     }
 
     const [appointmentList, count] = await prisma.$transaction([
@@ -2247,7 +2367,8 @@ exports.getDashboardOverviewToday = async (req, res) => {
     const { startDate, endDate } = getStartAndEndOfDay(new Date());
     let [
       todaysAppointment,
-      todaysPendingAppointment,
+      // todaysPendingAppointment,
+      completedAppointments,
       todaysCancelledAppointments,
     ] = await prisma.$transaction([
       prisma.appointments.count({
@@ -2259,11 +2380,21 @@ exports.getDashboardOverviewToday = async (req, res) => {
           },
         },
       }),
+      // prisma.appointments.count({
+      //   where: {
+      //     appointmentStatus: {
+      //       in: ["APPROVED", "SCHEDULED"],
+      //     },
+      //     hospitalId,
+      //     appointmentDate: {
+      //       gte: startDate,
+      //       lt: endDate,
+      //     },
+      //   },
+      // }),
       prisma.appointments.count({
         where: {
-          appointmentStatus: {
-            in: ["APPROVED", "SCHEDULED"],
-          },
+          appointmentStatus: "COMPLETED",
           hospitalId,
           appointmentDate: {
             gte: startDate,
@@ -2288,7 +2419,8 @@ exports.getDashboardOverviewToday = async (req, res) => {
       success: true,
       data: {
         todaysAppointment,
-        todaysPendingAppointment,
+        // todaysPendingAppointment,
+        completedAppointments,
         todaysCancelledAppointments,
       },
     });

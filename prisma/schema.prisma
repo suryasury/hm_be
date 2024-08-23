@@ -114,33 +114,34 @@ model hospitals {
 // }
 
 model users {
-  id                String         @id @default(cuid())
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  isAdmin           Boolean        @default(false)
-  name              String
-  email             String         @unique
-  password          String
-  profilePictureUrl String?
-  speciality        String?
-  houseNumber       String?
-  address1          String?
-  address2          String?
-  city              String?
-  state             String?
-  pincode           String?
-  country           String?
-  qualification     String?
-  phoneNumber       String
-  isd_code          String
-  role              roles
-  isActive          Boolean        @default(true)
-  isDeleted         Boolean        @default(false)
+  id                 String         @id @default(cuid())
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  isAdmin            Boolean        @default(false)
+  name               String
+  email              String         @unique
+  password           String
+  profilePictureUrl  String?
+  speciality         String?
+  houseNumber        String?
+  address1           String?
+  address2           String?
+  city               String?
+  state              String?
+  pincode            String?
+  country            String?
+  qualification      String?
+  needPasswordChange Boolean        @default(true)
+  phoneNumber        String
+  isd_code           String
+  role               roles
+  isActive           Boolean        @default(true)
+  isDeleted          Boolean        @default(false)
   // roleId            String
-  hospitalId        String
-  hospital          hospitals      @relation(fields: [hospitalId], references: [id])
-  appointments      appointments[]
-  doctorSlots       doctorSlots[]
+  hospitalId         String
+  hospital           hospitals      @relation(fields: [hospitalId], references: [id])
+  appointments       appointments[]
+  doctorSlots        doctorSlots[]
 
   @@index([email, phoneNumber])
 }
