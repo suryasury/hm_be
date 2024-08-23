@@ -2025,6 +2025,7 @@ exports.getAppointmentList = async (req, res) => {
           id: true,
           appointmentDate: true,
           appointmentStatus: true,
+          tokenNumber: true,
           doctor: {
             select: {
               id: true,
@@ -2110,6 +2111,7 @@ exports.getAppointmentDetails = async (req, res) => {
         pulse: true,
         patientWeight: true,
         otherVitalRemarks: true,
+        tokenNumber: true,
         appointmentFeedbacks: {
           select: {
             id: true,
