@@ -3,7 +3,10 @@ const { PrismaClient } = require("@prisma/client");
 const hashPassword = require("../helpers/hashPassword");
 const validatePassword = require("../helpers/validatePassword");
 const generateAccesToken = require("../helpers/generateAccessToken");
-const { determineTimePeriod } = require("../helpers/timePeriod");
+const {
+  determineTimePeriod,
+  getStartAndEndOfDay,
+} = require("../helpers/timePeriod");
 const {
   getPreSignedUrl,
   // deleteDocumentFromS3,
@@ -304,6 +307,9 @@ exports.createAppointment = async (req, res) => {
     let documents = appointmentDetails.documents || [];
     delete appointmentDetails.documents;
     let { id } = req.user;
+    const { startDate } = getStartAndEndOfDay(
+      appointmentDetails.appointmentDate,
+    );
 
     let newAppointment = await prisma.appointments.create({
       data: {
@@ -311,6 +317,7 @@ exports.createAppointment = async (req, res) => {
         patientId: id,
         tokenNumber: "0001",
         ...appointmentDetails,
+        appointmentDate: startDate,
       },
     });
     if (documents.length > 0) {
