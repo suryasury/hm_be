@@ -12,6 +12,8 @@ const {
   // deleteDocumentFromS3,
 } = require("./common.controller");
 const prisma = new PrismaClient();
+const fs = require("fs");
+const emailService = require("../utils/emailService");
 
 exports.signUp = async (req, res) => {
   try {
@@ -120,6 +122,89 @@ exports.login = async (req, res) => {
       message: "Error on login",
       success: false,
       err: err,
+    });
+  }
+};
+
+exports.forgotPasswordEmailRequest = async (req, res) => {
+  try {
+    let email = req.body.email;
+    let userDetails = await prisma.patients.findFirst({
+      where: {
+        email: email,
+      },
+    });
+    if (!userDetails) {
+      return res.status(httpStatus.NOT_FOUND).send({
+        message: "Invalid email or email not found",
+        success: false,
+        data: {},
+      });
+    }
+    let template = fs.readFileSync(
+      "src/emailTemplates/forgotPassword.html",
+      "utf-8",
+    );
+    let token = generateAccesToken(
+      {
+        userId: userDetails.id,
+      },
+      "30m",
+    );
+    let html = template
+      .replace("{{name}}", userDetails.name)
+      .replace(
+        /{{resetLink}}/g,
+        process.env.FRONTEND_URL_PATIENT +
+          process.env.RESET_PASSWORD_FRONTEND_ROUTE_PATIENT +
+          token,
+      );
+    await emailService.sendEmail({
+      from: process.env.SMTP_EMAIL,
+      to: userDetails.email,
+      subject: "Reset Password",
+      html: html,
+    });
+    res.status(httpStatus.OK).send({
+      message:
+        "Reset password link has been sent to your email. Kindly check the email and proceed further",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error sending email. Please try again after sometime",
+      success: false,
+      error: err,
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const userDetails = req.user;
+    const { password } = req.body;
+    const hashedPassword = hashPassword(password);
+    await prisma.patients.update({
+      data: {
+        password: hashedPassword,
+      },
+      where: {
+        id: userDetails.id,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Password changed successfully. Please login again",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: err.message,
+      success: false,
+      error: err,
     });
   }
 };

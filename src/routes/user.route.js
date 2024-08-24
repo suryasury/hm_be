@@ -1,11 +1,21 @@
 const express = require("express");
 const verifyAccessToken = require("../middlewares/verifyAccessToken");
+const verifyPatientResetPasswordToken = require("../middlewares/verifyPatientResetPasswordToken");
 const router = express.Router();
 const userController = require("../controllers").userController;
 
 router.post("/signup", userController.signUp);
 router.post("/login", userController.login);
 router.get("/details", verifyAccessToken, userController.userDetails);
+router.post(
+  "/forgot-password/email/request",
+  userController.forgotPasswordEmailRequest,
+);
+router.patch(
+  "/reset-password",
+  verifyPatientResetPasswordToken,
+  userController.resetPassword,
+);
 router.patch(
   "/profile/details/update",
   verifyAccessToken,

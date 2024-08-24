@@ -116,7 +116,9 @@ exports.forgotPasswordEmailRequest = async (req, res) => {
       .replace("{{name}}", userDetails.name)
       .replace(
         /{{resetLink}}/g,
-        process.env.RESET_PASSWORD_FRONTEND_HOST_ADMIN + token,
+        process.env.FRONTEND_URL_ADMIN +
+          process.env.RESET_PASSWORD_FRONTEND_ROUTE_ADMIN +
+          token,
       );
     await emailService.sendEmail({
       from: process.env.SMTP_EMAIL,
