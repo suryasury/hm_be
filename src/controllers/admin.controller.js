@@ -13,6 +13,7 @@ const prisma = new PrismaClient();
 const fs = require("fs");
 const emailService = require("../utils/emailService");
 const generatePassword = require("../helpers/generatePassword");
+const decryptPassword = require("../helpers/decryptPassword");
 
 exports.login = async (req, res) => {
   try {
@@ -36,8 +37,9 @@ exports.login = async (req, res) => {
       where: whereClause,
     });
     if (userDetails) {
+      const decryptedPassword = decryptPassword(loginDetails.password);
       const isValidPassword = validatePassword(
-        loginDetails.password,
+        decryptedPassword,
         userDetails.password,
       );
       if (isValidPassword) {
@@ -151,7 +153,8 @@ exports.resetPassword = async (req, res) => {
   try {
     const userDetails = req.user;
     const { password } = req.body;
-    const hashedPassword = hashPassword(password);
+    const decryptedPassword = decryptPassword(password);
+    const hashedPassword = hashPassword(decryptedPassword);
     await prisma.users.update({
       data: {
         password: hashedPassword,
@@ -179,7 +182,12 @@ exports.changePassword = async (req, res) => {
   try {
     const userDetails = req.user;
     const { oldPassword, newPassword } = req.body;
-    const isValidPassword = validatePassword(oldPassword, userDetails.password);
+    const decryptedOldPassword = decryptPassword(oldPassword);
+    const decryptedNewPassword = decryptPassword(newPassword);
+    const isValidPassword = validatePassword(
+      decryptedOldPassword,
+      userDetails.password,
+    );
     if (!isValidPassword) {
       return res.status(httpStatus.FORBIDDEN).send({
         message: "Invalid old password. Please try again",
@@ -187,7 +195,7 @@ exports.changePassword = async (req, res) => {
         data: {},
       });
     }
-    const hashedPassword = hashPassword(newPassword);
+    const hashedPassword = hashPassword(decryptedNewPassword);
     await prisma.users.update({
       data: {
         password: hashedPassword,

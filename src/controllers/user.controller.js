@@ -14,12 +14,13 @@ const {
 const prisma = new PrismaClient();
 const fs = require("fs");
 const emailService = require("../utils/emailService");
+const decryptPassword = require("../helpers/decryptPassword");
 
 exports.signUp = async (req, res) => {
   try {
-    console.log("signup controller");
     let userDetails = req.body;
-    const hashedPassword = hashPassword(userDetails.password);
+    const decryptedPassword = decryptPassword(userDetails.password);
+    const hashedPassword = hashPassword(decryptedPassword);
     userDetails.password = hashedPassword;
     let isUserExist = await prisma.patients.findFirst({
       where: {
@@ -85,8 +86,9 @@ exports.login = async (req, res) => {
       where: whereClause,
     });
     if (userDetails) {
+      const decryptedPassword = decryptPassword(loginDetails.password);
       const isValidPassword = validatePassword(
-        loginDetails.password,
+        decryptedPassword,
         userDetails.password,
       );
       if (isValidPassword) {
@@ -185,7 +187,8 @@ exports.resetPassword = async (req, res) => {
   try {
     const userDetails = req.user;
     const { password } = req.body;
-    const hashedPassword = hashPassword(password);
+    const decryptedPassword = decryptPassword(password);
+    const hashedPassword = hashPassword(decryptedPassword);
     await prisma.patients.update({
       data: {
         password: hashedPassword,
