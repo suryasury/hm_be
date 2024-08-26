@@ -17,14 +17,19 @@ const generatePassword = require("../helpers/generatePassword");
 exports.login = async (req, res) => {
   try {
     let loginDetails = req.body;
-    let whereClause = {};
+    let whereClause = {
+      isActive: true,
+      isDeleted: false,
+    };
     if (loginDetails.userNameType === "EMAIL") {
       whereClause = {
         email: loginDetails.userName,
+        ...whereClause,
       };
     } else {
       whereClause = {
         phoneNumber: loginDetails.userName,
+        ...whereClause,
       };
     }
     let userDetails = await prisma.users.findUnique({
@@ -73,7 +78,7 @@ exports.login = async (req, res) => {
       }
     }
     res.status(httpStatus.FORBIDDEN).send({
-      message: "User not found. Please signup",
+      message: "User not found. Please contact admin for further assistance",
       success: false,
       data: {},
     });
@@ -222,19 +227,12 @@ exports.signUp = async (req, res) => {
     userDetails.password = hashedPassword;
     let isUserExist = await prisma.users.findFirst({
       where: {
-        OR: [
-          {
-            phoneNumber: userDetails.phoneNumber,
-          },
-          {
-            email: userDetails.email,
-          },
-        ],
+        email: userDetails.email,
       },
     });
     if (isUserExist) {
       return res.status(httpStatus.CONFLICT).send({
-        message: "User already exist with given mobile number or email",
+        message: "User already exist with given email",
         success: false,
         data: {},
       });
@@ -295,31 +293,43 @@ exports.createDoctors = async (req, res) => {
     const { hospitalId } = req.user;
     const password = generatePassword();
     const hashedPassword = hashPassword(password);
-    const isUserExist = await prisma.users.findFirst({
+    const isUserExist = await prisma.users.findUnique({
       where: {
+        emailHospitalUniqueIdentifier: {
+          email: doctorDetails.email,
+          hospitalId,
+        },
         role: "DOCTOR",
-        OR: [
-          {
-            email: doctorDetails.email,
-          },
-          {
-            phoneNumber: doctorDetails.phoneNumber,
-          },
-        ],
+        isActive: true,
+        isDeleted: false,
       },
     });
     if (isUserExist) {
       return res.status(httpStatus.CONFLICT).send({
-        message: "Doctor already exists with given mobile number or email",
+        message: "Doctor already exists with given email",
         success: true,
         data: {},
       });
     }
-    const newDoctorDetails = await prisma.users.create({
-      data: {
+    const newDoctorDetails = await prisma.users.upsert({
+      where: {
+        emailHospitalUniqueIdentifier: {
+          email: doctorDetails.email,
+          hospitalId,
+        },
+      },
+      create: {
         hospitalId: hospitalId,
         isAdmin: false,
         password: hashedPassword,
+        ...doctorDetails,
+      },
+      update: {
+        hospitalId: hospitalId,
+        isAdmin: false,
+        password: hashedPassword,
+        isActive: true,
+        isDeleted: false,
         ...doctorDetails,
       },
     });
@@ -337,9 +347,32 @@ exports.createDoctors = async (req, res) => {
           });
         });
       });
-      await prisma.doctorSlots.createMany({
-        data: slotsArray,
-      });
+      await Promise.all(
+        slotsArray.map(async (slot) => {
+          try {
+            await prisma.doctorSlots.upsert({
+              where: {
+                doctorWeekDaySlotIdentifier: {
+                  doctorId: slot.doctorId,
+                  slotId: slot.slotId,
+                  weekDaysId: slot.weekDaysId,
+                },
+              },
+              create: {
+                ...slot,
+              },
+              update: {
+                isDoctorAvailableForTheDay: slot.isDoctorAvailableForTheDay,
+                slotLimit: slot.slotLimit,
+                isActive: true,
+                isDeleted: false,
+              },
+            });
+          } catch (err) {
+            throw err;
+          }
+        }),
+      );
     }
     const hospitalDetails = await prisma.hospitals.findUnique({
       where: {
@@ -539,30 +572,41 @@ exports.createAdmin = async (req, res) => {
     const { hospitalId } = req.user;
     const password = generatePassword();
     const hashedPassword = hashPassword(password);
-    const isUserExist = await prisma.users.findFirst({
+    const isUserExist = await prisma.users.findUnique({
       where: {
+        emailHospitalUniqueIdentifier: {
+          email: adminDetails.email,
+          hospitalId,
+        },
         role: "ADMIN",
-        OR: [
-          {
-            email: adminDetails.email,
-          },
-          {
-            phoneNumber: adminDetails.phoneNumber,
-          },
-        ],
+        isActive: true,
+        isDeleted: false,
       },
     });
     if (isUserExist) {
       return res.status(httpStatus.CONFLICT).send({
-        message: "User already exists with given mobile number or email",
+        message: "User already exists with given email",
         success: true,
         data: {},
       });
     }
-    const newUserDetails = await prisma.users.create({
-      data: {
+    const newUserDetails = await prisma.users.upsert({
+      where: {
+        emailHospitalUniqueIdentifier: {
+          email: adminDetails.email,
+          hospitalId,
+        },
+      },
+      create: {
         hospitalId: hospitalId,
         isAdmin: true,
+        password: hashedPassword,
+        ...adminDetails,
+      },
+      update: {
+        isAdmin: true,
+        isActive: true,
+        isDeleted: false,
         password: hashedPassword,
         ...adminDetails,
       },
@@ -600,6 +644,33 @@ exports.createAdmin = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "error creating users",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    let { userId } = req.params;
+    await prisma.users.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        isDeleted: true,
+        isActive: false,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Deleted successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error removing user",
       success: false,
       err: err,
     });

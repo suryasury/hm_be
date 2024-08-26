@@ -666,10 +666,16 @@ exports.updateAppointmentDetails = async (req, res) => {
   try {
     const { appointmentId } = req.params;
     const { id } = req.user;
-    const appointmentDetails = req.body.appointmentDetails;
+    let appointmentDetails = req.body.appointmentDetails;
     const removedDocsArray = req.body.removedDocuments || [];
     const documents = req.body.documents || {};
     if (appointmentDetails && Object.keys(appointmentDetails).length > 0) {
+      if (appointmentDetails.appointmentDate) {
+        const { startDate } = getStartAndEndOfDay(
+          appointmentDetails.appointmentDate,
+        );
+        appointmentDetails.appointmentDate = startDate;
+      }
       await prisma.appointments.update({
         where: {
           id: appointmentId,

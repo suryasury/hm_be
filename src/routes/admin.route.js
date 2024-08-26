@@ -8,6 +8,11 @@ const adminController = require("../controllers").adminController;
 router.post("/login", adminController.login);
 router.post("/signup", adminController.signUp);
 router.get("/details", verifyAdminAccessToken, adminController.getAdminDetails);
+router.delete(
+  "/user/:userId",
+  verifyAdminAccessToken,
+  adminController.deleteUser,
+);
 router.patch(
   "/change-password",
   verifyAdminChangePassword,

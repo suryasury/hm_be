@@ -144,7 +144,8 @@ model users {
   appointments       appointments[]
   doctorSlots        doctorSlots[]
 
-  @@index([email, phoneNumber])
+  @@unique([email, hospitalId], name: "emailHospitalUniqueIdentifier")
+  @@index([phoneNumber])
 }
 
 model slots {
