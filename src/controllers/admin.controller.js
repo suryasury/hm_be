@@ -333,6 +333,7 @@ exports.createDoctors = async (req, res) => {
         ...doctorDetails,
       },
       update: {
+        needPasswordChange: true,
         hospitalId: hospitalId,
         isAdmin: false,
         password: hashedPassword,
@@ -616,6 +617,7 @@ exports.createAdmin = async (req, res) => {
         isActive: true,
         isDeleted: false,
         password: hashedPassword,
+        needPasswordChange: true,
         ...adminDetails,
       },
     });
