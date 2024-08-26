@@ -2526,10 +2526,21 @@ exports.getFeedbackList = async (req, res) => {
     const limit = parseInt(req.query.limit || 10);
     const page = parseInt(req.query.page || 1);
     const skip = limit * (page - 1);
+    const doctorId = req.query.doctorId;
     let whereClause = {
       hospitalId,
       isDeleted: false,
     };
+    if (doctorId) {
+      whereClause = {
+        ...whereClause,
+        appointment: {
+          doctor: {
+            id: doctorId,
+          },
+        },
+      };
+    }
     if (searchQuery) {
       whereClause.OR = [
         {
