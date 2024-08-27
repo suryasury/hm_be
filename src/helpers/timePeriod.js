@@ -41,3 +41,35 @@ exports.getStartAndEndOfDay = (date) => {
 
   return { startDate, endDate };
 };
+
+exports.convertDateToWeekdayMonthDayYear = (date) => {
+  const daysOfWeek = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const dayOfWeekIndex = date.getDay();
+  const monthIndex = date.getMonth();
+  const day = date.getDate();
+  const year = date.getFullYear();
+
+  return `${daysOfWeek[dayOfWeekIndex]}, ${months[monthIndex]} ${day}, ${year}`;
+};

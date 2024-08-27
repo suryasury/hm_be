@@ -4,6 +4,7 @@ const {
   convertToDateTime,
   getStartAndEndOfDay,
   determineTimePeriod,
+  convertDateToWeekdayMonthDayYear,
 } = require("../helpers/timePeriod");
 const validatePassword = require("../helpers/validatePassword");
 const generateAccesToken = require("../helpers/generateAccessToken");
@@ -1708,6 +1709,18 @@ exports.updateAppointmentStatus = async (req, res) => {
         appointmentStatus: status,
         doctorRemarks: doctorRemarks,
       },
+      select: {
+        doctor: true,
+        patient: true,
+        doctorSlots: {
+          select: {
+            slot: true,
+          },
+        },
+        appointmentDate: true,
+        tokenNumber: true,
+        hospital: true,
+      },
     });
 
     if (prescriptions.length > 0) {
@@ -1775,6 +1788,85 @@ exports.updateAppointmentStatus = async (req, res) => {
           });
         }),
       );
+    }
+
+    if (status) {
+      let html;
+      let mailSubject = "";
+      let canSendEmail = false;
+      if (status === "APPROVED") {
+        const formattedDate = convertDateToWeekdayMonthDayYear(
+          appointUpdateResult.appointmentDate,
+        );
+        canSendEmail = true;
+        mailSubject = "Appointment Approved!!!";
+        let template = fs.readFileSync(
+          "src/emailTemplates/appointmentApproval.html",
+          "utf-8",
+        );
+        html = template
+          .replace("{{name}}", appointUpdateResult.patient.name)
+          .replace("{{appointmentDate}}", formattedDate)
+          .replace(
+            "{{appointmentTime}}",
+            appointUpdateResult.doctorSlots.slot.startTime,
+          )
+          .replace("{{doctorName}}", appointUpdateResult.doctor.name)
+          .replace(
+            "{{doctorQualification}}",
+            appointUpdateResult.doctor.qualification
+              ? ` ${appointUpdateResult.doctor.qualification}`
+              : "",
+          )
+          .replace(
+            "{{doctorSpeciality}}",
+            appointUpdateResult.doctor.speciality
+              ? `(${appointUpdateResult.doctor.speciality})`
+              : "",
+          )
+          .replace("{{appointmentStatus}}", status)
+          .replace("{{tokenNumber}}", appointUpdateResult.tokenNumber)
+          .replace("{{hospitalName}}", appointUpdateResult.hospital.name);
+      } else if (status === "CANCELLED") {
+        const formattedDate = convertDateToWeekdayMonthDayYear(
+          appointUpdateResult.appointmentDate,
+        );
+        canSendEmail = true;
+        let template = fs.readFileSync(
+          "src/emailTemplates/appointmentCancelled.html",
+          "utf-8",
+        );
+        mailSubject = "Appointment Cancelled";
+        html = template
+          .replace("{{name}}", appointUpdateResult.patient.name)
+          .replace("{{appointmentDate}}", formattedDate)
+          .replace(
+            "{{appointmentTime}}",
+            appointUpdateResult.doctorSlots.slot.startTime,
+          )
+          .replace("{{doctorName}}", appointUpdateResult.doctor.name)
+          .replace(
+            "{{doctorQualification}}",
+            appointUpdateResult.doctor.qualification
+              ? ` ${appointUpdateResult.doctor.qualification}`
+              : "",
+          )
+          .replace(
+            "{{doctorSpeciality}}",
+            appointUpdateResult.doctor.speciality
+              ? `(${appointUpdateResult.doctor.speciality})`
+              : "",
+          )
+          .replace("{{appointmentStatus}}", status)
+          .replace("{{hospitalName}}", appointUpdateResult.hospital.name);
+      }
+      if (canSendEmail)
+        await emailService.sendEmail({
+          from: process.env.SMTP_EMAIL,
+          to: appointUpdateResult.patient.email,
+          subject: mailSubject,
+          html: html,
+        });
     }
     res.status(httpStatus.OK).send({
       message: "Appointment status updated successfully",

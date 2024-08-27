@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reset Password</title>
+  </head>
+  <body
+    style="
+      letter-spacing: 0.6px;
+      line-height: 1.5rem;
+      font-size: 1rem;
+      max-width: 900px;
+    "
+  >
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">
+      <h2 style="color: #333">Hello {{name}},</h2>
+      <p style="color: #666; word-spacing: 0px">
+        We have reviewed your appointment request for
+        <span style="font-weight: bold">{{appointmentDate}}</span> at
+        <span style="font-weight: bold">{{appointmentTime}}</span> with
+        <span style="font-weight: bold"
+          >Dr. {{doctorName}}{{doctorQualification}}{{doctorSpeciality}}</span
+        >
+        and would like to inform you that it has been
+        <span style="font-weight: bold; color: red">{{appointmentStatus}}</span
+        >.
+      </p>
+      <p style="color: #666">
+        We apologize for any inconvenience this may cause. Unfortunately, we are
+        unable to accommodate your request at this time. Please reach out to the
+        hospital for additional information.
+      </p>
+      <p style="color: #666; margin-top: 5px; margin-bottom: 0px">Thank you</p>
+      <p style="color: #666; margin-top: 0px">{{hospitalName}}</p>
+    </div>
+  </body>
+</html>
