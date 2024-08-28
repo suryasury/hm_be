@@ -61,7 +61,13 @@ model hospitals {
   updatedAt            DateTime               @updatedAt
   name                 String
   isd_code             String?
-  address              String
+  houseNumber          String?
+  address1             String?
+  address2             String?
+  city                 String?
+  state                String?
+  pincode              String?
+  country              String?
   phoneNumber          String
   email                String
   // roles         roles[]

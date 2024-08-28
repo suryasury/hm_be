@@ -2289,6 +2289,21 @@ exports.getAppointmentDetails = async (req, res) => {
         patientWeight: true,
         otherVitalRemarks: true,
         tokenNumber: true,
+        hospital: {
+          select: {
+            name: true,
+            houseNumber: true,
+            address1: true,
+            address2: true,
+            city: true,
+            state: true,
+            country: true,
+            phoneNumber: true,
+            email: true,
+            isd_code: true,
+            pincode: true,
+          },
+        },
         appointmentFeedbacks: {
           select: {
             id: true,
