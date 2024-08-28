@@ -2129,6 +2129,78 @@ exports.getPatientList = async (req, res) => {
   }
 };
 
+exports.getPatientListAll = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const searchQuery = req.query.search;
+    const skip = limit * (page - 1);
+
+    let whereClause = {
+      isActive: true,
+      isDeleted: false,
+    };
+
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          name: {
+            contains: searchQuery,
+          },
+        },
+        {
+          phoneNumber: {
+            contains: searchQuery,
+          },
+        },
+        {
+          email: {
+            contains: searchQuery,
+          },
+        },
+      ];
+    }
+
+    const [patientList, count] = await prisma.$transaction([
+      prisma.patients.findMany({
+        skip,
+        take: limit,
+        where: whereClause,
+        select: {
+          name: 1,
+          id: 1,
+          phoneNumber: 1,
+          gender: 1,
+          dateOfBirth: 1,
+          bloodGroup: 1,
+          isd_code: 1,
+          email: 1,
+        },
+      }),
+      prisma.patients.count({
+        where: whereClause,
+      }),
+    ]);
+    res.status(httpStatus.OK).send({
+      message: "Patient list fetched",
+      success: true,
+      data: {
+        patientList,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching patient list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
 exports.getAppointmentList = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit || 10);
@@ -2261,6 +2333,212 @@ exports.getAppointmentList = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error fetching appointment list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.doctorSlotDetails = async (req, res) => {
+  try {
+    let doctorId = req.params.doctorId;
+    let weekDayId = req.params.weekDayId;
+    let doctorSlotDetails = await prisma.doctorSlots.findMany({
+      where: {
+        doctorId: doctorId,
+        weekDaysId: weekDayId,
+        slot: {
+          isActive: true,
+          isDeleted: false,
+        },
+      },
+      include: {
+        slot: true,
+      },
+      orderBy: [
+        {
+          slot: {
+            startTimeInDateTime: "asc",
+          },
+        },
+        {
+          slot: {
+            endTimeInDateTime: "asc",
+          },
+        },
+      ],
+    });
+    let morningSlots = [];
+    let afternoonSlots = [];
+    let eveningSlots = [];
+    let isDoctorAvailableForTheDay = true;
+
+    doctorSlotDetails.forEach((slotDetails) => {
+      if (isDoctorAvailableForTheDay) {
+        isDoctorAvailableForTheDay = slotDetails.isDoctorAvailableForTheDay;
+      }
+      if (determineTimePeriod(slotDetails.slot.startTime) === "morning") {
+        morningSlots.push(slotDetails);
+      } else if (
+        determineTimePeriod(slotDetails.slot.startTime) === "afternoon"
+      ) {
+        afternoonSlots.push(slotDetails);
+      } else {
+        eveningSlots.push(slotDetails);
+      }
+    });
+    res.status(httpStatus.OK).send({
+      message: "Doctors slot for the day fetched successfully",
+      success: true,
+      data: {
+        isSlotAvailableForTheDay:
+          doctorSlotDetails.length > 0 && isDoctorAvailableForTheDay,
+        slotDetails: {
+          morningSlots,
+          afternoonSlots,
+          eveningSlots,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching dctors slot details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.getDocumentTypes = async (req, res) => {
+  try {
+    const hospitalId = req.user.hospitalId;
+    const response = await prisma.documentTypes.findMany({
+      where: {
+        hospitalId: hospitalId,
+        isActive: true,
+        isDeleted: false,
+      },
+      select: {
+        name: true,
+        id: true,
+      },
+      orderBy: {
+        isDefault: "asc",
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Document type list fetched",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching document types",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.createAppointment = async (req, res) => {
+  try {
+    let appointmentDetails = req.body;
+    const { hospitalId } = req.user;
+    let documents = appointmentDetails.documents || [];
+    delete appointmentDetails.documents;
+    const id = appointmentDetails.patientId;
+    const { startDate } = getStartAndEndOfDay(
+      appointmentDetails.appointmentDate,
+    );
+
+    //will do concurrency control later
+    const isTokenExists = await prisma.tokenNumberTrackers.findUnique({
+      where: {
+        doctorSlotDateHospitalUniqueIdentifier: {
+          date: startDate,
+          doctorSlotId: appointmentDetails.doctorSlotId,
+          hospitalId,
+        },
+      },
+    });
+
+    let updatedTokenRecord = {};
+
+    if (isTokenExists) {
+      updatedTokenRecord = await prisma.tokenNumberTrackers.update({
+        where: {
+          id: isTokenExists.id,
+        },
+        data: {
+          currentValue: {
+            increment: 1,
+          },
+        },
+      });
+    } else {
+      updatedTokenRecord = await prisma.tokenNumberTrackers.create({
+        data: {
+          date: startDate,
+          hospitalId,
+          doctorSlotId: appointmentDetails.doctorSlotId,
+          currentValue: 1,
+        },
+      });
+    }
+    let tokenNumber = updatedTokenRecord.currentValue;
+    tokenNumber = tokenNumber.toString().padStart(4, "0");
+    let newAppointment = await prisma.appointments.create({
+      data: {
+        hospitalId,
+        appointmentStatus: "SCHEDULED",
+        bookedBy: "ADMIN",
+        tokenNumber: tokenNumber,
+        ...appointmentDetails,
+        appointmentDate: startDate,
+      },
+    });
+    if (documents.length > 0) {
+      const documentsData = documents.map((document) => {
+        return {
+          fileName: document.fileName,
+          bucketPath: document.bucketPath,
+          documentName: document.fileName,
+          fileExtension: document.fileExtension,
+          contentType: document.contentType,
+          patientId: appointmentDetails.patientId,
+          appointmentId: newAppointment.id,
+          documentTypeId: document.documentTypeId,
+        };
+      });
+      await prisma.patientAppointmentDocs.createMany({
+        data: documentsData,
+      });
+    }
+    let hospitalPatient = await prisma.hospitalPatients.findFirst({
+      where: {
+        hospitalId: newAppointment.hospitalId,
+        patientId: id,
+      },
+    });
+    if (!hospitalPatient) {
+      await prisma.hospitalPatients.create({
+        data: {
+          hospitalId: newAppointment.hospitalId,
+          patientId: id,
+        },
+      });
+    }
+    res.status(httpStatus.OK).send({
+      message: "Appointment booked successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error creating appointment",
       success: false,
       err: err,
     });

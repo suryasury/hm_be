@@ -48,6 +48,33 @@ exports.uploadCustomerMedicalRecords = async (req, res) => {
   }
 };
 
+exports.uploadCustomerMedicalRecordsFromAdmin = async (req, res) => {
+  try {
+    let id = req.params.patientId;
+    const files = req.files;
+    let filePromises = files.map(async (file) => {
+      let pathInBucket = `patients/${id}/records/${Date.now().toString()}-${
+        file.originalname
+      }`;
+      const serviceResponse = await this.uploadDocumentToS3(file, pathInBucket);
+      return serviceResponse;
+    });
+    let result = await Promise.all(filePromises);
+    res.status(httpStatus.OK).send({
+      message: "Documents uploaded successfully",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error uploading documents",
+      success: false,
+      err: err,
+    });
+  }
+};
+
 exports.updateUserProfilePicture = async (req, res) => {
   try {
     let { id } = req.user;

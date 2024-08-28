@@ -23,6 +23,12 @@ enum roles {
   DOCTOR
 }
 
+enum userEnums {
+  ADMIN
+  DOCTOR
+  PATIENT
+}
+
 enum appointmentStatuses {
   SCHEDULED
   PENDING
@@ -261,6 +267,7 @@ model appointments {
   pulse                  String?
   patientWeight          String?
   otherVitalRemarks      String?
+  bookedBy               userEnums                @default(PATIENT)
   ailmentId              String
   tokenNumber            String
   appointmentStatus      appointmentStatuses

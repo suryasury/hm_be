@@ -355,8 +355,12 @@ exports.doctorSlotDetails = async (req, res) => {
     let morningSlots = [];
     let afternoonSlots = [];
     let eveningSlots = [];
+    let isDoctorAvailableForTheDay = true;
 
     doctorSlotDetails.forEach((slotDetails) => {
+      if (isDoctorAvailableForTheDay) {
+        isDoctorAvailableForTheDay = slotDetails.isDoctorAvailableForTheDay;
+      }
       if (determineTimePeriod(slotDetails.slot.startTime) === "morning") {
         morningSlots.push(slotDetails);
       } else if (
@@ -371,7 +375,8 @@ exports.doctorSlotDetails = async (req, res) => {
       message: "Doctors slot for the day fetched successfully",
       success: true,
       data: {
-        isSlotAvailableForTheDay: doctorSlotDetails.length > 0,
+        isSlotAvailableForTheDay:
+          doctorSlotDetails.length > 0 && isDoctorAvailableForTheDay,
         slotDetails: {
           morningSlots,
           afternoonSlots,
@@ -438,6 +443,7 @@ exports.createAppointment = async (req, res) => {
     let newAppointment = await prisma.appointments.create({
       data: {
         appointmentStatus: "SCHEDULED",
+        bookedBy: "PATIENT",
         patientId: id,
         tokenNumber: tokenNumber,
         ...appointmentDetails,

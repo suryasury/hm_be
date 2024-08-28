@@ -25,6 +25,13 @@ router.post(
 );
 
 router.post(
+  "/customer/upload/records/:patientId",
+  verifyAdminAccessToken,
+  upload.array("files"),
+  commonController.uploadCustomerMedicalRecordsFromAdmin,
+);
+
+router.post(
   "/customer/upload/profilepicture",
   verifyUserAccessToken,
   upload.single("file"),

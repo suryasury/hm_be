@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `appointments` ADD COLUMN `bookedBy` ENUM('ADMIN', 'DOCTOR', 'PATIENT') NOT NULL DEFAULT 'PATIENT';

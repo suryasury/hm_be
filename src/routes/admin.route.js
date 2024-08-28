@@ -163,6 +163,21 @@ router.post(
   adminController.createdocumentType,
 );
 router.get(
+  "/hospital/slots/:doctorId/:weekDayId",
+  verifyAdminAccessToken,
+  adminController.doctorSlotDetails,
+);
+router.get(
+  "/hospital/documenttype/list",
+  verifyAdminAccessToken,
+  adminController.getDocumentTypes,
+);
+router.post(
+  "/hospital/appointment/create",
+  verifyAdminAccessToken,
+  adminController.createAppointment,
+);
+router.get(
   "/hospital/appointment/list",
   verifyAdminAccessToken,
   adminController.getAppointmentList,
@@ -206,6 +221,11 @@ router.get(
   "/hospital/patients/list",
   verifyAdminAccessToken,
   adminController.getPatientList,
+);
+router.get(
+  "/hospital/patients/list/all",
+  verifyAdminAccessToken,
+  adminController.getPatientListAll,
 );
 router.get(
   "/dashboard/overview/metrics",
