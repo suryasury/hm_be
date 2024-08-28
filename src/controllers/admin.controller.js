@@ -2379,6 +2379,7 @@ exports.getAppointmentDetails = async (req, res) => {
             isd_code: true,
             bloodGroup: true,
             dateOfBirth: true,
+            gender: true,
           },
         },
         ailment: {
