@@ -1720,6 +1720,8 @@ exports.updateAppointmentStatus = async (req, res) => {
         appointmentDate: true,
         tokenNumber: true,
         hospital: true,
+        hospitalId: true,
+        patientId: true,
       },
     });
 
