@@ -2211,12 +2211,18 @@ exports.getAppointmentList = async (req, res) => {
     const searchQuery = req.query.search;
     const doctorId = req.query.doctorId;
     const date = req.query.date;
+    const currentAppointmentId = req.query.currentAppointmentId;
     const appointmentStatus = req.query.appointmentStatus;
     let whereClause = {
       hospitalId,
     };
     if (appointmentStatus) {
       whereClause.appointmentStatus = appointmentStatus;
+    }
+    if (currentAppointmentId) {
+      whereClause.id = {
+        not: currentAppointmentId,
+      };
     }
 
     if (searchQuery) {
