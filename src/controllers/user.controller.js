@@ -6,6 +6,7 @@ const generateAccesToken = require("../helpers/generateAccessToken");
 const {
   determineTimePeriod,
   getStartAndEndOfDay,
+  convertDateToWeekdayMonthDayYear,
 } = require("../helpers/timePeriod");
 const {
   getPreSignedUrl,
@@ -449,6 +450,19 @@ exports.createAppointment = async (req, res) => {
         ...appointmentDetails,
         appointmentDate: startDate,
       },
+      select: {
+        patient: true,
+        doctor: true,
+        doctorSlots: {
+          select: {
+            slot: true,
+          },
+        },
+        hospital: true,
+        id: true,
+        hospitalId: true,
+        appointmentDate: true,
+      },
     });
     if (documents.length > 0) {
       const documentsData = documents.map((document) => {
@@ -481,10 +495,44 @@ exports.createAppointment = async (req, res) => {
         },
       });
     }
+    const formattedDate = convertDateToWeekdayMonthDayYear(
+      newAppointment.appointmentDate,
+    );
+    canSendEmail = true;
+    let template = fs.readFileSync(
+      "src/emailTemplates/appointmentScheduled.html",
+      "utf-8",
+    );
+    html = template
+      .replace("{{name}}", newAppointment.patient.name)
+      .replace("{{appointmentDate}}", formattedDate)
+      .replace("{{appointmentTime}}", newAppointment.doctorSlots.slot.startTime)
+      .replace("{{doctorName}}", newAppointment.doctor.name)
+      .replace(
+        "{{doctorQualification}}",
+        newAppointment.doctor.qualification
+          ? ` ${newAppointment.doctor.qualification}`
+          : "",
+      )
+      .replace(
+        "{{doctorSpeciality}}",
+        newAppointment.doctor.speciality
+          ? `(${newAppointment.doctor.speciality})`
+          : "",
+      )
+      .replace("{{tokenNumber}}", tokenNumber)
+      .replace("{{hospitalName}}", newAppointment.hospital.name);
+
+    await emailService.sendEmail({
+      from: process.env.SMTP_EMAIL,
+      to: newAppointment.patient.email,
+      subject: "Appointment Scheduled",
+      html: html,
+    });
     res.status(httpStatus.OK).send({
       message: "Appointment booked successfully",
       success: true,
-      data: newAppointment,
+      data: {},
     });
   } catch (err) {
     console.log("err", err);
