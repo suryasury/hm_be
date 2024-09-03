@@ -22,8 +22,8 @@ module.exports = {
         FRONTEND_URL_PATIENT: "https://patient.siddhacure.com/",
         SMTP_HOST: "smtppro.zoho.in",
         SMTP_PORT: "465",
-        SMTP_EMAIL: "support@tech42.in",
-        SMTP_PASSWORD: "#9Nactzw",
+        SMTP_EMAIL: "support@siddhacure.com",
+        SMTP_PASSWORD: "di7$edsP",
       },
       env_uat: {
         NODE_ENV: "uat",
