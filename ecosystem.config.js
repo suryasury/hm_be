@@ -3,19 +3,27 @@ module.exports = {
     {
       name: "hm_backend",
       script: "./index.js",
-      env_production: {
-        NODE_ENV: "production",
+      env_prod: {
+        NODE_ENV: "prod",
         PORT: 3030,
         DATABASE_URL:
           "mysql://root:password@123@localhost:3306/hospital_management",
         JWT_SECRET:
-          "uwyiausa887ahs92dc861a4f0eeiusiq98w9qjsiqsjqwuqi9899qiwq8990674ba3f09a1d58f97e19a025kjoiwoq89w89qwoiwqc3bf1a",
+          "c52bba2d3021547a9f92dc861a4f0ee44f1d72d6edac093a0ee224290362f6043a27e7b8c459fe02180674ba3f09a1d58f97e19a025ecc983fd75cfd1ac3bf1a",
         PASSWORD_ENCRYPT_KEY:
-          "3d09c8b30cf4983ab8d2128e93267fe5a9943fd98feb02c09390fa504ec77c29",
+          "9bff4a41f9d8a4c63952e6c3accebc0b25178a88828628ab949246b326e80001",
         PASSWORD_SALT_ROUNDS: 10,
-        FILE_UPLOADER_SKEY: "pKgIx7U+X/saTyHu8zWUIFHFcuLl0jvW7JPzvgUN",
-        FILE_UPLOADER_AKEY: "AKIAZAN7IW3SERD6IOQO",
-        BUCKET_NAME_S3: "dev-hms-01a7-assets.tech42.in",
+        FILE_UPLOADER_SKEY: "WjaOViaIm0EgUnJr9ISoZzVpp88kjhU6jcdcfbX4",
+        FILE_UPLOADER_AKEY: "AKIAU72LGEZF34TODC42",
+        BUCKET_NAME_S3: "hms-01b7at5s6-assets",
+        RESET_PASSWORD_FRONTEND_ROUTE_ADMIN: "reset-password/",
+        RESET_PASSWORD_FRONTEND_ROUTE_PATIENT: "reset-password/",
+        FRONTEND_URL_ADMIN: "https://hmssuperuser.siddhacure.com/",
+        FRONTEND_URL_PATIENT: "https://patient.siddhacure.com/",
+        SMTP_HOST: "smtppro.zoho.in",
+        SMTP_PORT: "465",
+        SMTP_EMAIL: "support@tech42.in",
+        SMTP_PASSWORD: "#9Nactzw",
       },
       env_uat: {
         NODE_ENV: "uat",
