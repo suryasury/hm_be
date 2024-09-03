@@ -20,6 +20,8 @@ app.use(
       "http://localhost:4173",
       "https://dev-patient.tech42.in",
       "https://dev-admin.tech42.in",
+      "https://hmssuperuser.siddhacure.com",
+      "https://patient.siddhacure.com",
     ],
   }),
 );
