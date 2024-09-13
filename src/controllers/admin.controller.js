@@ -15,6 +15,8 @@ const fs = require("fs");
 const emailService = require("../utils/emailService");
 const generatePassword = require("../helpers/generatePassword");
 const decryptPassword = require("../helpers/decryptPassword");
+const { createObjectCsvWriter } = require("csv-writer");
+const path = require("path");
 
 exports.login = async (req, res) => {
   try {
@@ -206,14 +208,14 @@ exports.changePassword = async (req, res) => {
         id: userDetails.id,
       },
     });
-    const jwtToken = generateAccesToken({
-      userId: userDetails.id,
-    });
-    res.cookie("sessionToken", jwtToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-    });
+    // const jwtToken = generateAccesToken({
+    //   userId: userDetails.id,
+    // });
+    // res.cookie("sessionToken", jwtToken, {
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: "none",
+    // });
     res.status(httpStatus.OK).send({
       message: "Password changed successfully",
       success: true,
@@ -346,8 +348,8 @@ exports.createDoctors = async (req, res) => {
 
     if (slotDetails.length > 0) {
       let slotsArray = [];
-      slotDetails.map((slot) => {
-        slot.selectedSlots.map((id) => {
+      slotDetails.forEach((slot) => {
+        slot.selectedSlots.forEach((id) => {
           slotsArray.push({
             doctorId: newDoctorDetails.id,
             slotId: id,
@@ -903,37 +905,19 @@ exports.updateAdminDetails = async (req, res) => {
   try {
     const adminDetails = req.body;
     const { userId } = req.params;
-    const isUserExist = await prisma.users.findFirst({
+    const { hospitalId } = req.user;
+    const isUserExist = await prisma.users.findUnique({
       where: {
         role: "ADMIN",
-        OR: [
-          {
-            email: adminDetails.email,
-          },
-          {
-            phoneNumber: adminDetails.phoneNumber,
-          },
-        ],
+        emailHospitalUniqueIdentifier: {
+          email: adminDetails.email,
+          hospitalId,
+        },
       },
     });
-    if (
-      isUserExist &&
-      adminDetails.email &&
-      isUserExist.email === adminDetails.email
-    ) {
+    if (isUserExist) {
       return res.status(httpStatus.CONFLICT).send({
         message: "User already exists with given email",
-        success: true,
-        data: {},
-      });
-    }
-    if (
-      isUserExist &&
-      adminDetails.phoneNumber &&
-      isUserExist.phoneNumber === adminDetails.phoneNumber
-    ) {
-      return res.status(httpStatus.CONFLICT).send({
-        message: "User already exists with given phone number",
         success: true,
         data: {},
       });
@@ -968,41 +952,23 @@ exports.updateDoctorDetails = async (req, res) => {
     const slotDetails = req.body.slotDetails || [];
     const { doctorId } = req.params;
     if (Object.keys(doctorDetails).length > 0) {
-      const isUserExist = await prisma.users.findFirst({
+      const isUserExist = await prisma.users.findUnique({
         where: {
           role: "DOCTOR",
-          OR: [
-            {
-              email: doctorDetails.email,
-            },
-            {
-              phoneNumber: doctorDetails.phoneNumber,
-            },
-          ],
+          emailHospitalUniqueIdentifier: {
+            email: doctorDetails.email,
+            hospitalId,
+          },
         },
       });
-      if (
-        isUserExist &&
-        doctorDetails.email &&
-        isUserExist.email === doctorDetails.email
-      ) {
+      if (isUserExist) {
         return res.status(httpStatus.CONFLICT).send({
           message: "Doctor already exists with given email",
           success: true,
           data: {},
         });
       }
-      if (
-        isUserExist &&
-        doctorDetails.phoneNumber &&
-        isUserExist.phoneNumber === doctorDetails.phoneNumber
-      ) {
-        return res.status(httpStatus.CONFLICT).send({
-          message: "Doctor already exists with given phone number",
-          success: true,
-          data: {},
-        });
-      }
+
       await prisma.users.update({
         where: {
           id: doctorId,
@@ -1058,7 +1024,7 @@ exports.updateDoctorDetails = async (req, res) => {
                       },
                     });
                   } catch (err) {
-                    console.log("weiriweurw", err);
+                    console.log("error", err);
                     throw err;
                   }
                 }),
@@ -1075,7 +1041,7 @@ exports.updateDoctorDetails = async (req, res) => {
               });
             }
           } catch (err) {
-            console.log("weiriweurw", err);
+            console.log("error", err);
             throw err;
           }
         }),
@@ -2335,6 +2301,249 @@ exports.getAppointmentList = async (req, res) => {
         },
       },
     });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error fetching appointment list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.appointmentListDownload = async (req, res) => {
+  try {
+    const patientId = req.query.patientId;
+    const { hospitalId } = req.user;
+    const searchQuery = req.query.search;
+    const doctorId = req.query.doctorId;
+    const date = req.query.date;
+    const currentAppointmentId = req.query.currentAppointmentId;
+    const appointmentStatus = req.query.appointmentStatus;
+    let whereClause = {
+      hospitalId,
+    };
+    if (appointmentStatus) {
+      whereClause.appointmentStatus = appointmentStatus;
+    }
+    if (currentAppointmentId) {
+      whereClause.id = {
+        not: currentAppointmentId,
+      };
+    }
+
+    if (searchQuery) {
+      whereClause.OR = [
+        {
+          patient: {
+            name: {
+              contains: searchQuery,
+            },
+          },
+        },
+        {
+          doctor: {
+            name: {
+              contains: searchQuery,
+            },
+          },
+        },
+        {
+          patient: {
+            phoneNumber: {
+              contains: searchQuery,
+            },
+          },
+        },
+      ];
+    }
+
+    if (patientId) {
+      whereClause.patient = {
+        id: patientId,
+      };
+    }
+
+    if (doctorId) {
+      whereClause.doctorId = doctorId;
+    }
+
+    if (date) {
+      const { startDate } = getStartAndEndOfDay(date);
+      whereClause.appointmentDate = startDate.toISOString();
+    }
+
+    const appointmentList = await prisma.appointments.findMany({
+      orderBy: [
+        {
+          createdAt: "desc",
+        },
+      ],
+      where: whereClause,
+      select: {
+        id: true,
+        appointmentDate: true,
+        appointmentStatus: true,
+        tokenNumber: true,
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            speciality: true,
+          },
+        },
+        patient: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNumber: true,
+            isd_code: true,
+            gender: true,
+          },
+        },
+        ailment: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        doctorSlots: {
+          select: {
+            doctorId: true,
+            weekDaysId: true,
+            id: true,
+            slot: {
+              select: {
+                id: true,
+                startTime: true,
+                endTime: true,
+                hospitalId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (appointmentList.length === 0) {
+      return res.status(httpStatus.NOT_FOUND).send({
+        message: "No appointment found for the selected filter",
+        success: false,
+        data: {},
+      });
+    }
+
+    let headers = [
+      {
+        id: "patientName",
+        title: "Patient Name",
+      },
+      {
+        id: "patientEmail",
+        title: "Patient Email",
+      },
+      {
+        id: "patientMobileNumber",
+        title: "Patient Mobile Number",
+      },
+      {
+        id: "disease",
+        title: "Disease",
+      },
+      {
+        id: "patientGender",
+        title: "Patient Gender",
+      },
+      {
+        id: "doctorName",
+        title: "Doctor Name",
+      },
+      {
+        id: "doctorSpecialty",
+        title: "Doctor Specialty",
+      },
+      {
+        id: "tokenNumber",
+        title: "Token Number",
+      },
+      {
+        id: "appointmentDate",
+        title: "Appointment Date",
+      },
+      {
+        id: "appointmentTime",
+        title: "Appointment Time",
+      },
+      {
+        id: "appointmentStatus",
+        title: "Appointment Status",
+      },
+    ];
+
+    const formattedAppointmentList = appointmentList.map((appointment) => {
+      return {
+        patientName: appointment.patient.name,
+        patientEmail: appointment.patient.email,
+        patientMobileNumber: appointment.patient.phoneNumber,
+        disease: appointment.ailment.name,
+        patientGender: appointment.patient.gender,
+        doctorName: appointment.doctor.name,
+        doctorSpecialty: appointment.doctor.speciality,
+        tokenNumber: appointment.tokenNumber,
+        appointmentDate: new Date(appointment.appointmentDate).toLocaleString(
+          "en-US",
+          {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            timeZone: "IST",
+          },
+        ),
+        appointmentTime: `${appointment.doctorSlots.slot.startTime} - ${appointment.doctorSlots.slot.endTime}`,
+        appointmentStatus: appointment.appointmentStatus,
+      };
+    });
+
+    let fileName = `appointment_list_${Date.now().toString()}.csv`;
+
+    const csvWriter = createObjectCsvWriter({
+      path: path.join(__dirname, fileName),
+      header: headers,
+    });
+    csvWriter
+      .writeRecords(formattedAppointmentList)
+      .then(() => {
+        const filePath = path.join(__dirname, fileName);
+        const fileStream = fs.createReadStream(filePath);
+
+        res.header("Access-Control-Expose-Headers", "Content-Disposition");
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=${encodeURIComponent(fileName)}`,
+        );
+
+        fileStream.pipe(res);
+        res.on("finish", () => {
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error("Error deleting CSV file", err);
+            } else {
+              console.log("CSV file deleted successfully");
+            }
+          });
+        });
+      })
+      .catch((err) => {
+        console.error("Error writing CSV:", err);
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+          success: false,
+          message: "Error downloading file. please try again",
+          data: {},
+          error: err,
+        });
+      });
   } catch (err) {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({

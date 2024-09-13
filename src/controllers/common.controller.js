@@ -143,8 +143,6 @@ exports.uploadDocumentToS3 = async (file, bucketPath) => {
       };
       const putCommand = new PutObjectCommand(params);
       await s3.send(putCommand);
-      delete params.Body;
-      delete params.ContentType;
     } else {
       const params = {
         Bucket: process.env.BUCKET_NAME_S3,

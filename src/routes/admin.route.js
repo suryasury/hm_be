@@ -183,6 +183,11 @@ router.get(
   adminController.getAppointmentList,
 );
 router.get(
+  "/hospital/appointment/list/download",
+  verifyAdminAccessToken,
+  adminController.appointmentListDownload,
+);
+router.get(
   "/hospital/appointment/details/:appointmentId",
   verifyAdminAccessToken,
   adminController.getAppointmentDetails,
