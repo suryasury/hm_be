@@ -951,6 +951,7 @@ exports.updateDoctorDetails = async (req, res) => {
     const removedSlotIds = req.body.removedSlotIds || [];
     const slotDetails = req.body.slotDetails || [];
     const { doctorId } = req.params;
+    const { hospitalId } = req.user;
     if (Object.keys(doctorDetails).length > 0) {
       const isUserExist = await prisma.users.findUnique({
         where: {
