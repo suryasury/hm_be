@@ -905,23 +905,23 @@ exports.updateAdminDetails = async (req, res) => {
   try {
     const adminDetails = req.body;
     const { userId } = req.params;
-    const { hospitalId } = req.user;
-    const isUserExist = await prisma.users.findUnique({
-      where: {
-        role: "ADMIN",
-        emailHospitalUniqueIdentifier: {
-          email: adminDetails.email,
-          hospitalId,
-        },
-      },
-    });
-    if (isUserExist) {
-      return res.status(httpStatus.CONFLICT).send({
-        message: "User already exists with given email",
-        success: true,
-        data: {},
-      });
-    }
+    // const { hospitalId } = req.user;
+    // const isUserExist = await prisma.users.findUnique({
+    //   where: {
+    //     role: "ADMIN",
+    //     emailHospitalUniqueIdentifier: {
+    //       email: adminDetails.email,
+    //       hospitalId,
+    //     },
+    //   },
+    // });
+    // if (isUserExist) {
+    //   return res.status(httpStatus.CONFLICT).send({
+    //     message: "User already exists with given email",
+    //     success: true,
+    //     data: {},
+    //   });
+    // }
     await prisma.users.update({
       where: {
         id: userId,
@@ -951,24 +951,26 @@ exports.updateDoctorDetails = async (req, res) => {
     const removedSlotIds = req.body.removedSlotIds || [];
     const slotDetails = req.body.slotDetails || [];
     const { doctorId } = req.params;
-    const { hospitalId } = req.user;
+    // const { hospitalId } = req.user;
     if (Object.keys(doctorDetails).length > 0) {
-      const isUserExist = await prisma.users.findUnique({
-        where: {
-          role: "DOCTOR",
-          emailHospitalUniqueIdentifier: {
-            email: doctorDetails.email,
-            hospitalId,
-          },
-        },
-      });
-      if (isUserExist) {
-        return res.status(httpStatus.CONFLICT).send({
-          message: "Doctor already exists with given email",
-          success: true,
-          data: {},
-        });
-      }
+      // if (doctorDetails.email) {
+      //   const isUserExist = await prisma.users.findUnique({
+      //     where: {
+      //       role: "DOCTOR",
+      //       emailHospitalUniqueIdentifier: {
+      //         email: doctorDetails.email,
+      //         hospitalId,
+      //       },
+      //     },
+      //   });
+      //   if (isUserExist) {
+      //     return res.status(httpStatus.CONFLICT).send({
+      //       message: "Doctor already exists with given email",
+      //       success: true,
+      //       data: {},
+      //     });
+      //   }
+      // }
 
       await prisma.users.update({
         where: {
