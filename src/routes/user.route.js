@@ -87,4 +87,9 @@ router.get(
   verifyAccessToken,
   userController.getDocumentTypes,
 );
+router.delete(
+  "/appointment/record/posttreatment/:appointmentId/:documentId",
+  verifyAccessToken,
+  userController.deletePostTreatmentDocuments,
+);
 module.exports = router;

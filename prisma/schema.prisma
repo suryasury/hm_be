@@ -233,6 +233,7 @@ model patients {
   patientAppointmentDocs patientAppointmentDocs[]
   appointmentFeedbacks   appointmentFeedbacks[]
   hospitalPatients       hospitalPatients[]
+  postTreatmentDocuments postTreatmentDocuments[]
   // hospitalId             String
   // hospital               hospitals @relation(fields: [hospitalId], references: [id])
   // @@unique([email], name: "patientEmailUniqueIdentifierr")
@@ -253,34 +254,36 @@ model hospitalPatients {
 }
 
 model appointments {
-  id                     String                   @id @default(cuid())
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
-  doctorSlotId           String
-  doctorId               String
-  patientId              String
-  hospitalId             String
-  remarks                String?
-  doctorRemarks          String?
-  feverLevel             String?
-  bloodPreassure         String?
-  pulse                  String?
-  patientWeight          String?
-  otherVitalRemarks      String?
-  bookedBy               userEnums                @default(PATIENT)
-  ailmentId              String
-  tokenNumber            String
-  appointmentStatus      appointmentStatuses
-  appointmentDate        DateTime
-  isFeedbackProvided     Boolean                  @default(false)
-  hospital               hospitals                @relation(fields: [hospitalId], references: [id])
-  patient                patients                 @relation(fields: [patientId], references: [id])
-  doctor                 users                    @relation(fields: [doctorId], references: [id])
-  doctorSlots            doctorSlots              @relation(fields: [doctorSlotId], references: [id])
-  ailment                ailment                  @relation(references: [id], fields: [ailmentId])
-  patientPrescription    patientPrescription[]
-  patientAppointmentDocs patientAppointmentDocs[]
-  appointmentFeedbacks   appointmentFeedbacks?
+  id                             String                   @id @default(cuid())
+  createdAt                      DateTime                 @default(now())
+  updatedAt                      DateTime                 @updatedAt
+  doctorSlotId                   String
+  doctorId                       String
+  patientId                      String
+  hospitalId                     String
+  remarks                        String?
+  doctorRemarks                  String?
+  feverLevel                     String?
+  bloodPreassure                 String?
+  pulse                          String?
+  patientWeight                  String?
+  otherVitalRemarks              String?
+  bookedBy                       userEnums                @default(PATIENT)
+  isPostTreatmentReportsUploaded Boolean                  @default(false)
+  ailmentId                      String
+  tokenNumber                    String
+  appointmentStatus              appointmentStatuses
+  appointmentDate                DateTime
+  isFeedbackProvided             Boolean                  @default(false)
+  hospital                       hospitals                @relation(fields: [hospitalId], references: [id])
+  patient                        patients                 @relation(fields: [patientId], references: [id])
+  doctor                         users                    @relation(fields: [doctorId], references: [id])
+  doctorSlots                    doctorSlots              @relation(fields: [doctorSlotId], references: [id])
+  ailment                        ailment                  @relation(references: [id], fields: [ailmentId])
+  patientPrescription            patientPrescription[]
+  patientAppointmentDocs         patientAppointmentDocs[]
+  appointmentFeedbacks           appointmentFeedbacks?
+  postTreatmentDocuments         postTreatmentDocuments[]
 }
 
 model patientPrescription {
@@ -323,6 +326,24 @@ model prescriptionTimeOfDay {
 }
 
 model patientAppointmentDocs {
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  documentName   String
+  bucketPath     String
+  fileName       String
+  fileExtension  String
+  documentTypeId String
+  contentType    String
+  patientId      String
+  appointmentId  String
+  isDeleted      Boolean       @default(false)
+  patient        patients      @relation(fields: [patientId], references: [id])
+  appointment    appointments  @relation(fields: [appointmentId], references: [id])
+  documentTypes  documentTypes @relation(fields: [documentTypeId], references: [id])
+}
+
+model postTreatmentDocuments {
   id             String        @id @default(cuid())
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -402,6 +423,7 @@ model documentTypes {
   hospitalId             String
   hopital                hospitals                @relation(fields: [hospitalId], references: [id])
   patientAppointmentDocs patientAppointmentDocs[]
+  postTreatmentDocuments postTreatmentDocuments[]
 }
 
 model tokenNumberTrackers {

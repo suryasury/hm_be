@@ -1881,6 +1881,94 @@ exports.updatePatientAppointmentVitals = async (req, res) => {
   }
 };
 
+exports.getPatientPrescriptionForAppointment = async (req, res) => {
+  try {
+    const appointmentId = req.params.appointmentId;
+    const patientId = req.params.patientId;
+    const limit = parseInt(req.query.limit || 10);
+    const page = parseInt(req.query.page || 1);
+    const skip = limit * (page - 1);
+
+    const [prescriptionList, count] = await prisma.$transaction([
+      prisma.prescriptionTimeOfDay.findMany({
+        where: {
+          prescriptionDays: {
+            patientPrescription: {
+              appointmentId,
+              patientId,
+            },
+          },
+        },
+        select: {
+          id: true,
+          timeOfDay: true,
+          isPrescriptionTaken: true,
+          prescriptionDays: {
+            select: {
+              id: true,
+              prescriptionDate: true,
+              patientPrescription: {
+                select: {
+                  id: true,
+                  medicationStock: {
+                    select: {
+                      id: true,
+                      medicationName: true,
+                      medicationDosage: true,
+                      manufacturer: true,
+                      code: true,
+                      dosageForm: true,
+                    },
+                  },
+                  durationInDays: true,
+                  foodRelation: true,
+                  prescriptionRemarks: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [
+          {
+            prescriptionDays: {
+              prescriptionDate: "asc",
+            },
+          },
+        ],
+        take: limit,
+        skip,
+      }),
+      prisma.prescriptionTimeOfDay.count({
+        where: {
+          prescriptionDays: {
+            patientPrescription: {
+              appointmentId,
+              patientId,
+            },
+          },
+        },
+      }),
+    ]);
+    res.status(httpStatus.OK).send({
+      message: "prescription list fetched successfully",
+      success: true,
+      data: {
+        prescriptionList,
+        meta: {
+          totalMatchingRecords: count,
+        },
+      },
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "error updating vital details",
+      success: false,
+      err: err,
+    });
+  }
+};
+
 exports.createMedication = async (req, res) => {
   try {
     const medicationDetails = req.body;
@@ -2179,7 +2267,8 @@ exports.getAppointmentList = async (req, res) => {
     const { hospitalId } = req.user;
     const searchQuery = req.query.search;
     const doctorId = req.query.doctorId;
-    const date = req.query.date;
+    const startOfDate = req.query.startDate;
+    const endOfDate = req.query.endDate;
     const currentAppointmentId = req.query.currentAppointmentId;
     const appointmentStatus = req.query.appointmentStatus;
     let whereClause = {
@@ -2230,9 +2319,13 @@ exports.getAppointmentList = async (req, res) => {
       whereClause.doctorId = doctorId;
     }
 
-    if (date) {
-      const { startDate } = getStartAndEndOfDay(date);
-      whereClause.appointmentDate = startDate.toISOString();
+    if (startOfDate && endOfDate) {
+      const { startDate } = getStartAndEndOfDay(startOfDate);
+      const { _, endDate } = getStartAndEndOfDay(endOfDate);
+      whereClause.appointmentDate = {
+        gte: startDate,
+        lte: endDate,
+      };
     }
 
     const [appointmentList, count] = await prisma.$transaction([
@@ -2320,7 +2413,8 @@ exports.appointmentListDownload = async (req, res) => {
     const { hospitalId } = req.user;
     const searchQuery = req.query.search;
     const doctorId = req.query.doctorId;
-    const date = req.query.date;
+    const startOfDate = req.query.startDate;
+    const endOfDate = req.query.endDate;
     const currentAppointmentId = req.query.currentAppointmentId;
     const appointmentStatus = req.query.appointmentStatus;
     let whereClause = {
@@ -2371,9 +2465,13 @@ exports.appointmentListDownload = async (req, res) => {
       whereClause.doctorId = doctorId;
     }
 
-    if (date) {
-      const { startDate } = getStartAndEndOfDay(date);
-      whereClause.appointmentDate = startDate.toISOString();
+    if (startOfDate && endOfDate) {
+      const { startDate } = getStartAndEndOfDay(startOfDate);
+      const { _, endDate } = getStartAndEndOfDay(endOfDate);
+      whereClause.appointmentDate = {
+        gte: startDate,
+        lte: endDate,
+      };
     }
 
     const appointmentList = await prisma.appointments.findMany({
@@ -2857,6 +2955,21 @@ exports.getAppointmentDetails = async (req, res) => {
             },
           },
         },
+        postTreatmentDocuments: {
+          select: {
+            id: true,
+            bucketPath: true,
+            documentName: true,
+            fileExtension: true,
+            fileName: true,
+            documentTypes: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         doctor: {
           select: {
             id: true,
@@ -2907,6 +3020,17 @@ exports.getAppointmentDetails = async (req, res) => {
     if (appointmentDetails.patientAppointmentDocs.length > 0) {
       appointmentDetails.patientAppointmentDocs = await Promise.all(
         appointmentDetails.patientAppointmentDocs.map(async (doc) => {
+          const signedUrl = await getPreSignedUrl(doc.bucketPath);
+          return {
+            ...doc,
+            signedUrl: signedUrl,
+          };
+        }),
+      );
+    }
+    if (appointmentDetails.postTreatmentDocuments.length > 0) {
+      appointmentDetails.postTreatmentDocuments = await Promise.all(
+        appointmentDetails.postTreatmentDocuments.map(async (doc) => {
           const signedUrl = await getPreSignedUrl(doc.bucketPath);
           return {
             ...doc,
@@ -3246,6 +3370,47 @@ exports.getFeedbackList = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error fetching feedback list",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.deletePostTreatmentDocuments = async (req, res) => {
+  try {
+    const { documentId, appointmentId } = req.params;
+
+    await prisma.postTreatmentDocuments.delete({
+      where: {
+        id: documentId,
+      },
+    });
+    const postTreatmentRecords = await prisma.postTreatmentDocuments.count({
+      where: {
+        appointmentId: appointmentId,
+      },
+    });
+
+    if (postTreatmentRecords === 0) {
+      await prisma.appointments.update({
+        where: {
+          id: appointmentId,
+        },
+        data: {
+          isPostTreatmentReportsUploaded: false,
+        },
+      });
+    }
+
+    res.status(httpStatus.OK).send({
+      message: "Document deleted successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error deleting document",
       success: false,
       err: err,
     });

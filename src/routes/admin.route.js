@@ -202,6 +202,16 @@ router.patch(
   verifyAdminAccessToken,
   adminController.updatePatientAppointmentVitals,
 );
+router.get(
+  "/hospital/appointment/prescription/list/:appointmentId/:patientId",
+  verifyAdminAccessToken,
+  adminController.getPatientPrescriptionForAppointment,
+);
+router.delete(
+  "/hospital/appointment/record/posttreatment/:appointmentId/:documentId",
+  verifyAdminAccessToken,
+  adminController.deletePostTreatmentDocuments,
+);
 router.post(
   "/hospital/medication/create",
   verifyAdminAccessToken,

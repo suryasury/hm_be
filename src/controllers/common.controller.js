@@ -75,6 +75,58 @@ exports.uploadCustomerMedicalRecordsFromAdmin = async (req, res) => {
   }
 };
 
+exports.uploadPostTreatmentRecords = async (req, res) => {
+  try {
+    const id = req.params.patientId;
+    const docTypeId = req.params.docTypeId;
+    const appointmentId = req.params.appointmentId;
+    const files = req.files;
+    let filePromises = files.map(async (file) => {
+      let pathInBucket = `patients/${id}/records/posttreatment/${Date.now().toString()}-${
+        file.originalname
+      }`;
+      const serviceResponse = await this.uploadDocumentToS3(file, pathInBucket);
+      return serviceResponse;
+    });
+    const result = await Promise.all(filePromises);
+    const formatedData = result.map((res) => {
+      return {
+        bucketPath: res.bucketPath,
+        patientId: id,
+        documentTypeId: docTypeId,
+        appointmentId,
+        fileName: res.fileName,
+        documentName: res.fileName,
+        fileExtension: res.fileExtension,
+        contentType: res.contentType,
+      };
+    });
+    const response = await prisma.postTreatmentDocuments.createMany({
+      data: formatedData,
+    });
+    await prisma.appointments.update({
+      where: {
+        id: appointmentId,
+      },
+      data: {
+        isPostTreatmentReportsUploaded: true,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Documents uploaded successfully",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error uploading documents",
+      success: false,
+      err: err,
+    });
+  }
+};
+
 exports.updateUserProfilePicture = async (req, res) => {
   try {
     let { id } = req.user;

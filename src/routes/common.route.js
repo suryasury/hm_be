@@ -32,6 +32,20 @@ router.post(
 );
 
 router.post(
+  "/admin/upload/records/posttreatment/:patientId/:docTypeId/:appointmentId",
+  verifyAdminAccessToken,
+  upload.array("files"),
+  commonController.uploadPostTreatmentRecords,
+);
+
+router.post(
+  "/patient/upload/records/posttreatment/:patientId/:docTypeId/:appointmentId",
+  verifyUserAccessToken,
+  upload.array("files"),
+  commonController.uploadPostTreatmentRecords,
+);
+
+router.post(
   "/customer/upload/profilepicture",
   verifyUserAccessToken,
   upload.single("file"),

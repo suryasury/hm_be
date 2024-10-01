@@ -671,6 +671,21 @@ exports.getAppointmentDetails = async (req, res) => {
             name: true,
           },
         },
+        postTreatmentDocuments: {
+          select: {
+            id: true,
+            bucketPath: true,
+            documentName: true,
+            fileExtension: true,
+            fileName: true,
+            documentTypes: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         patientPrescription: {
           include: {
             medicationStock: {
@@ -701,6 +716,20 @@ exports.getAppointmentDetails = async (req, res) => {
         },
       );
       appointmentDetails.patientAppointmentDocs = await Promise.all(
+        signedUrlPromise,
+      );
+    }
+    if (appointmentDetails.postTreatmentDocuments.length > 0) {
+      let signedUrlPromise = appointmentDetails.postTreatmentDocuments.map(
+        async (patientDocs) => {
+          const signedUrl = await getPreSignedUrl(patientDocs.bucketPath);
+          return {
+            ...patientDocs,
+            signedUrl,
+          };
+        },
+      );
+      appointmentDetails.postTreatmentDocuments = await Promise.all(
         signedUrlPromise,
       );
     }
@@ -1035,6 +1064,48 @@ exports.getDocumentTypes = async (req, res) => {
     console.log("err", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
       message: "Error fetching document types",
+      success: false,
+      err: err,
+    });
+  }
+};
+
+exports.deletePostTreatmentDocuments = async (req, res) => {
+  try {
+    const { documentId, appointmentId } = req.params;
+
+    await prisma.postTreatmentDocuments.delete({
+      where: {
+        id: documentId,
+      },
+    });
+
+    const postTreatmentRecords = await prisma.postTreatmentDocuments.count({
+      where: {
+        appointmentId: appointmentId,
+      },
+    });
+
+    if (postTreatmentRecords === 0) {
+      await prisma.appointments.update({
+        where: {
+          id: appointmentId,
+        },
+        data: {
+          isPostTreatmentReportsUploaded: false,
+        },
+      });
+    }
+
+    res.status(httpStatus.OK).send({
+      message: "Document deleted successfully",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Error deleting document",
       success: false,
       err: err,
     });
