@@ -22,6 +22,8 @@ app.use(
       "https://dev-admin.tech42.in",
       "https://hmssuperuser.siddhacure.com",
       "https://patient.siddhacure.com",
+      "https://demo-hms-admin.tech42.in",
+      "https://demo-hms-patient.tech42.in"
     ],
   }),
 );
