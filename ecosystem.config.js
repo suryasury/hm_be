@@ -45,7 +45,7 @@ module.exports = {
         SMTP_HOST: "smtppro.zoho.in",
         SMTP_PORT: "465",
         SMTP_EMAIL: "support@tech42.in",
-        SMTP_PASSWORD: "q9*qmtUk",
+        SMTP_PASSWORD: "Mysupportmailpass@tech42",
       },
       env_demo: {
         NODE_ENV: "demo",
@@ -67,7 +67,7 @@ module.exports = {
         SMTP_HOST: "smtppro.zoho.in",
         SMTP_PORT: "465",
         SMTP_EMAIL: "support@tech42.in",
-        SMTP_PASSWORD: "q9*qmtUk",
+        SMTP_PASSWORD: "Mysupportmailpass@tech42",
       },
       env_dev: {
         NODE_ENV: "dev",
@@ -89,7 +89,7 @@ module.exports = {
         SMTP_HOST: "smtppro.zoho.in",
         SMTP_PORT: "465",
         SMTP_EMAIL: "support@tech42.in",
-        SMTP_PASSWORD: "q9*qmtUk",
+        SMTP_PASSWORD: "Mysupportmailpass@tech42",
       },
     },
   ],
